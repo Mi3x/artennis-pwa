@@ -1,6 +1,6 @@
-# ARTennis PWA
+# CourtVision PWA
 
-Installable Progressive Web App for the ARTennis AI match-tracking SaaS.
+Installable Progressive Web App for CourtVision — the AI tennis match-tracking SaaS (courtvision.app).
 
 ## Files
 ```

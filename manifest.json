@@ -1,7 +1,7 @@
 {
-  "name": "ARTennis — AI Match Tracking",
-  "short_name": "ARTennis",
-  "description": "AI-powered tennis ball tracking, trajectory analysis and broadcast-style match data.",
+  "name": "CourtVision — AI Tennis Tracking",
+  "short_name": "CourtVision",
+  "description": "AI-powered tennis ball tracking, trajectory analysis and broadcast-style match data. courtvision.app",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

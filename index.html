@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>ARTennis — AI Match Tracking</title>
+<title>CourtVision — AI Tennis Tracking</title>
 <meta name="description" content="AI tennis ball tracking, trajectory and match analytics.">
 <meta name="theme-color" content="#1B5424">
 <link rel="manifest" href="manifest.json">
@@ -53,6 +53,8 @@
     font-family:var(--font-display);
     letter-spacing:.14em;font-size:15px;
   }
+  .logo{width:34px;height:34px;flex:none;
+    filter:drop-shadow(0 3px 8px rgba(0,0,0,.4))}
   .plate .ar{color:var(--optic)}
   .live{
     margin-left:auto;display:flex;align-items:center;gap:7px;
@@ -215,7 +217,16 @@
 <body>
 
 <header>
-  <div class="plate"><span class="ar">AR</span>TENNIS</div>
+  <svg class="logo" viewBox="0 0 48 48" role="img" aria-label="CourtVision logo">
+    <defs><clipPath id="ballClip"><circle cx="24" cy="24" r="21"/></clipPath></defs>
+    <circle cx="24" cy="24" r="21" fill="#DFFF4F"/>
+    <g clip-path="url(#ballClip)" fill="none" stroke="#14401D" stroke-width="4">
+      <circle cx="-7" cy="24" r="22"/>
+      <circle cx="55" cy="24" r="22"/>
+    </g>
+    <circle cx="24" cy="24" r="21" fill="none" stroke="#F2F4EE" stroke-width="2.5"/>
+  </svg>
+  <div class="plate"><span class="ar">COURT</span>VISION</div>
   <div class="live"><span class="dot"></span>TRACKING</div>
   <button id="installBtn">Install app</button>
 </header>
@@ -245,7 +256,11 @@
         <g id="bounceLayer"></g>
         <polyline id="trail" fill="none" stroke="#DFFF4F" stroke-width="4"
                   stroke-linecap="round" stroke-linejoin="round" opacity=".9"/>
-        <circle id="ball" r="7" fill="#DFFF4F" stroke="#F2F4EE" stroke-width="1.5"/>
+        <g id="ball">
+          <polygon points="14,0 -10,-9 -4,0 -10,9"
+                   fill="#DFFF4F" stroke="#F2F4EE" stroke-width="1.5"
+                   stroke-linejoin="round"/>
+        </g>
       </svg>
 
       <div class="hud">
@@ -344,7 +359,7 @@
 <div class="toast" id="toast" role="status"></div>
 
 <script>
-/* ============ rally data (from the ARTennis tracking pipeline) ============ */
+/* ============ rally data (from the CourtVision tracking pipeline) ============ */
 /* Court coords in metres: x 0–10.97 across, y 0–23.77 along (0 = near baseline) */
 const RALLY = {
   players: { near: "N. Djokovic", far: "A. Rinderknech" },
@@ -381,7 +396,7 @@ function resetReplay() {
   shotCountEl.textContent = "0";
   speedHud.classList.remove("show");
   const [sx, sy] = toPx(...RALLY.shots[0].from);
-  ball.setAttribute("cx", sx); ball.setAttribute("cy", sy);
+  ball.setAttribute("transform", `translate(${sx} ${sy}) rotate(-90)`);
 }
 
 function playReplay() {
@@ -392,16 +407,16 @@ function playReplay() {
     flashSpeed(RALLY.shots.at(-1).speed);
     return;
   }
-  let shotIdx = 0, t = 0;
+  let shotIdx = 0, t = 0, bounced = false;
   const SHOT_MS = 1150;
   let last = performance.now();
   const trailPts = [];
+  let lastX = null, lastY = null, lastAng = -90;
 
   function frame(now) {
     const dt = now - last; last = now;
     t += dt / SHOT_MS;
     if (t >= 1) { // shot complete
-      addBounce(RALLY.shots[shotIdx].bounce);
       shotIdx++;
       if (shotIdx >= RALLY.shots.length) {
         shotCountEl.textContent = RALLY.shots.length;
@@ -409,15 +424,35 @@ function playReplay() {
       }
       shotCountEl.textContent = shotIdx;
       flashSpeed(RALLY.shots[shotIdx].speed);
-      t = 0; trailPts.length = 0;
+      t = 0; bounced = false; trailPts.length = 0;
     }
     const s = RALLY.shots[shotIdx];
-    const [x1, y1] = toPx(...s.from), [x2, y2] = toPx(...s.to);
-    // slight lateral curve so flight reads as an arc from above
-    const curve = Math.sin(t * Math.PI) * 14 * (shotIdx % 2 ? -1 : 1);
-    const x = x1 + (x2 - x1) * t + curve;
-    const y = y1 + (y2 - y1) * t;
-    ball.setAttribute("cx", x); ball.setAttribute("cy", y);
+    const p0 = toPx(...s.from), pb = toPx(...s.bounce), p1 = toPx(...s.to);
+    // where along the shot the bounce happens (proportional to distance)
+    const d1 = Math.hypot(pb[0] - p0[0], pb[1] - p0[1]);
+    const d2 = Math.hypot(p1[0] - pb[0], p1[1] - pb[1]);
+    const bounceT = d1 / (d1 + d2);
+    let x, y;
+    if (t < bounceT) {
+      // flight: strike point -> landing spot (with a slight arc)
+      const u = t / bounceT;
+      const curve = Math.sin(u * Math.PI) * 14 * (shotIdx % 2 ? -1 : 1);
+      x = p0[0] + (pb[0] - p0[0]) * u + curve;
+      y = p0[1] + (pb[1] - p0[1]) * u;
+    } else {
+      // the instant the arrow lands, drop the bounce marker there
+      if (!bounced) { addBounce(s.bounce); bounced = true; }
+      // then a short straight hop up to the opponent
+      const u = (t - bounceT) / (1 - bounceT);
+      x = pb[0] + (p1[0] - pb[0]) * u;
+      y = pb[1] + (p1[1] - pb[1]) * u;
+    }
+    // point the arrowhead along the direction of travel
+    if (lastX !== null && Math.hypot(x - lastX, y - lastY) > 0.5) {
+      lastAng = Math.atan2(y - lastY, x - lastX) * 180 / Math.PI;
+    }
+    ball.setAttribute("transform", `translate(${x} ${y}) rotate(${lastAng})`);
+    lastX = x; lastY = y;
     trailPts.push(`${x.toFixed(1)},${y.toFixed(1)}`);
     if (trailPts.length > 26) trailPts.shift();
     trail.setAttribute("points", trailPts.join(" "));
@@ -555,11 +590,11 @@ installBtn.addEventListener("click", async () => {
   if (!deferredPrompt) return;
   deferredPrompt.prompt();
   const { outcome } = await deferredPrompt.userChoice;
-  if (outcome === "accepted") toast("ARTennis installed");
+  if (outcome === "accepted") toast("CourtVision installed");
   deferredPrompt = null;
   installBtn.classList.remove("ready");
 });
-window.addEventListener("appinstalled", () => toast("Installed — find ARTennis on your home screen"));
+window.addEventListener("appinstalled", () => toast("Installed — find CourtVision on your home screen"));
 
 /* service worker */
 if ("serviceWorker" in navigator) {

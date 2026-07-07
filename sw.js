@@ -1,5 +1,5 @@
-/* ARTennis service worker — app shell precache + cache-first runtime */
-const CACHE = "artennis-v1";
+/* CourtVision service worker — app shell precache + cache-first runtime */
+const CACHE = "courtvision-v2";
 const SHELL = [
   "./",
   "./index.html",
