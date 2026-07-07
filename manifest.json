@@ -1,0 +1,38 @@
+{
+  "name": "ARTennis — AI Match Tracking",
+  "short_name": "ARTennis",
+  "description": "AI-powered tennis ball tracking, trajectory analysis and broadcast-style match data.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0E2415",
+  "theme_color": "#1B5424",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["sports", "productivity"],
+  "shortcuts": [
+    {
+      "name": "Analyze a rally",
+      "url": "./index.html#analyze",
+      "description": "Upload footage for AI tracking"
+    },
+    {
+      "name": "Live court",
+      "url": "./index.html#live",
+      "description": "Watch the tracked rally replay"
+    }
+  ]
+}
