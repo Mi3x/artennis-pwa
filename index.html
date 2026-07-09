@@ -285,6 +285,9 @@
   <section id="tab-stats">
     <h1>Rally analytics</h1>
     <p class="sub">Computed from the tracked trajectory — no manual tagging.</p>
+    
+    <div id="cv-breakdown" style="max-width:440px;margin:24px auto;background:#12291a;border-radius:16px;padding:20px"></div>
+
 
     <div class="stat-grid">
       <div class="stat"><b id="stAvg">—</b><span>Avg shot speed</span></div>
@@ -358,7 +361,17 @@
 
 <div class="toast" id="toast" role="status"></div>
 
+
+<script src="match-logic.js"></script>
+<script src="tagging-ui.js"></script>
 <script>
+const M = window.CourtVisionMatch;
+
+let match = M.newMatch({
+  playerA: 'N. Djokovic',
+  playerB: 'A. Rinderknech',
+  server: 'A'
+});
 /* ============ rally data (from the CourtVision tracking pipeline) ============ */
 /* Court coords in metres: x 0–10.97 across, y 0–23.77 along (0 = near baseline) */
 const RALLY = {
