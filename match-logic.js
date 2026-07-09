@@ -1,149 +1,178 @@
 /* ============================================================
-   CourtVision — match-logic.js
-   State machine + point log + stats for Phase 1 tagging.
-   Pure logic, no DOM. Wire your UI buttons to these functions.
+   CourtVision — match-logic.js  (v2)
+   Point log + automatic tennis scoring engine.
+   Server flips every game; ends change after odd games
+   (and every 6 points in a tiebreak). Sets: 6 games (2 clear),
+   tiebreak at 6-6 (first to 7, 2 clear). Best of 3 sets.
    ============================================================ */
 
-// ---- Constants -------------------------------------------------
-
 const WIN_CAUSES = ['consistency', 'aggressive', 'serve', 'opp_double_fault'];
-
-// Auto-derive map: winner's cause -> loser's mirrored cause
 const LOSS_CAUSE_MAP = {
   consistency: 'unforced_error',
   aggressive: 'unreturnable',
   serve: 'unreturnable',
   opp_double_fault: 'double_fault',
 };
-
 const ZONES = ['net_play', 'middle_court', 'ahead_baseline', 'behind_baseline'];
 const WINGS = ['fh', 'bh'];
 const SHOT_TYPES = ['volley', 'down_the_line', 'cross_court', 'smash', 'slice', 'lob', 'angle', 'drop_shot'];
 
-// ---- Match creation --------------------------------------------
-
-/**
- * Create a new match object.
- * playerA is the tracked player (your player), playerB the opponent.
- * server: 'A' or 'B' — who serves first.
- */
 function newMatch({ playerA, playerB, server = 'A', matchId = null }) {
   return {
     id: matchId || 'match_' + Date.now(),
     createdAt: new Date().toISOString(),
     players: { A: playerA, B: playerB },
-    server, // current server: 'A' | 'B'
-    points: [], // saved point records
-    current: freshPoint(), // in-progress point state
+    firstServer: server,
+    server,
+    points: [],
+    current: freshPoint(),
   };
 }
+function freshPoint() { return { serve: null, serveFaults: 0, strokes: [] }; }
 
-function freshPoint() {
-  return {
-    serve: null,        // 'first_in' | 'second_in' | 'double_fault'
-    serveFaults: 0,     // 0 or 1 while point in progress
-    strokes: [],        // ['fh','bh',...] taps for the tracked player (A)
-  };
-}
-
-// ---- During the point -------------------------------------------
-
-/**
- * Record a serve result tap. Call with 'in' or 'fault'.
- * Returns { done, doubleFault } — if doubleFault is true the point
- * auto-saved itself and the UI should skip the tagging card.
- */
+// ---- during the point --------------------------------------------
 function recordServe(match, result) {
   const cur = match.current;
   if (result === 'in') {
     cur.serve = cur.serveFaults === 0 ? 'first_in' : 'second_in';
     return { done: false, doubleFault: false };
   }
-  // fault
   cur.serveFaults += 1;
   if (cur.serveFaults >= 2) {
     cur.serve = 'double_fault';
-    // Receiver wins automatically; no tagging card needed.
     const winner = match.server === 'A' ? 'B' : 'A';
     savePoint(match, { winner, winCause: 'opp_double_fault' });
     return { done: true, doubleFault: true };
   }
   return { done: false, doubleFault: false };
 }
-
-/** Record one FH/BH stroke tap for the tracked player. */
 function recordStroke(match, wing) {
   if (!WINGS.includes(wing)) throw new Error('wing must be fh|bh');
   match.current.strokes.push(wing);
 }
-
-/** Undo the most recent stroke tap. */
-function undoStroke(match) {
-  match.current.strokes.pop();
-}
-
-/**
- * Suggest the wing for the shot-detail card, from the last tap.
- * Returns 'fh' | 'bh' | null.
- */
+function undoStroke(match) { match.current.strokes.pop(); }
 function suggestWing(match) {
   const s = match.current.strokes;
   return s.length ? s[s.length - 1] : null;
 }
 
-// ---- Ending the point --------------------------------------------
-
-/**
- * Save the completed point.
- * winner: 'A' | 'B'
- * winCause: one of WIN_CAUSES (from the tagging card)
- * shotDetail (optional): { zone, wing, shotType } from the detail card
- * Loss cause is always derived automatically.
- */
+// ---- ending the point ----------------------------------------------
 function savePoint(match, { winner, winCause, shotDetail = null }) {
   if (!WIN_CAUSES.includes(winCause)) throw new Error('bad winCause');
   const cur = match.current;
-
   const record = {
     n: match.points.length + 1,
     winner,
     server: match.server,
     win_cause: winCause,
     loss_cause: LOSS_CAUSE_MAP[winCause],
-    serve: cur.serve, // may be null if serve toggle skipped
-    strokes: cur.strokes.slice(), // tracked player's tap stream
+    serve: cur.serve,
+    strokes: cur.strokes.slice(),
     shots_in_rally: cur.strokes.length || null,
     zone: shotDetail?.zone ?? null,
     wing: shotDetail?.wing ?? null,
     shot_type: shotDetail?.shotType ?? null,
     ts: new Date().toISOString(),
   };
-
   match.points.push(record);
   match.current = freshPoint();
+  match.server = getScore(match).server; // auto server rotation
   return record;
 }
+function toggleServer(match) { match.server = match.server === 'A' ? 'B' : 'A'; }
 
-/** Flip the server (call at the end of each game). */
-function toggleServer(match) {
-  match.server = match.server === 'A' ? 'B' : 'A';
+// ---- scoring engine -------------------------------------------------
+// Replays all points and returns the live tennis score.
+function getScore(match) {
+  const PTS = ['0', '15', '30', '40'];
+  let sets = { A: 0, B: 0 };
+  let setHistory = [];           // e.g. [{A:6,B:4}]
+  let games = { A: 0, B: 0 };
+  let gp = { A: 0, B: 0 };       // points in current game / tiebreak
+  let tiebreak = false;
+  let server = match.firstServer;
+  let gamesPlayedTotal = 0;      // across whole match, for end changes
+  let tbFirstServer = null;
+  let finished = false;
+  let matchWinner = null;
+
+  const other = s => (s === 'A' ? 'B' : 'A');
+
+  const endGame = (winner) => {
+    games[winner] += 1;
+    gp = { A: 0, B: 0 };
+    gamesPlayedTotal += 1;
+    // set won?
+    const w = games[winner], l = games[other(winner)];
+    if ((w >= 6 && w - l >= 2) || w === 7) {
+      sets[winner] += 1;
+      setHistory.push({ A: games.A, B: games.B });
+      games = { A: 0, B: 0 };
+      if (sets[winner] === 2) { finished = true; matchWinner = winner; }
+    }
+    tiebreak = (games.A === 6 && games.B === 6);
+    if (tiebreak) { tbFirstServer = other(server); server = tbFirstServer; }
+    else server = other(server);
+  };
+
+  for (const p of match.points) {
+    if (finished) break;
+    gp[p.winner] += 1;
+    if (tiebreak) {
+      // server: first server serves point 1, then alternates every 2 points
+      const played = gp.A + gp.B;
+      if ((gp.A >= 7 || gp.B >= 7) && Math.abs(gp.A - gp.B) >= 2) {
+        const w = gp.A > gp.B ? 'A' : 'B';
+        endGame(w); // counts as a game -> 7-6 set
+      } else {
+        server = (played % 2 === 1) ? other(tbFirstServer)
+          : (Math.floor(played / 2) % 2 === 0 ? tbFirstServer : other(tbFirstServer));
+        // simpler rotation: after point 1, swap every 2 points
+        const idx = played; // points completed
+        server = (idx === 0) ? tbFirstServer
+          : ((Math.floor((idx + 1) / 2) % 2 === 0) ? tbFirstServer : other(tbFirstServer));
+      }
+    } else {
+      // normal game
+      const a = gp.A, b = gp.B;
+      if ((a >= 4 || b >= 4) && Math.abs(a - b) >= 2) {
+        endGame(a > b ? 'A' : 'B');
+      }
+    }
+  }
+
+  // display strings
+  let gameScore;
+  if (tiebreak) gameScore = gp.A + '-' + gp.B + ' (TB)';
+  else {
+    const a = gp.A, b = gp.B;
+    if (a >= 3 && b >= 3) {
+      if (a === b) gameScore = 'Deuce';
+      else gameScore = 'Ad ' + (a > b ? 'A' : 'B');
+    } else gameScore = (PTS[Math.min(a, 3)]) + '-' + (PTS[Math.min(b, 3)]);
+  }
+
+  // change ends after odd total games in a set (1,3,5...) and every 6 pts in TB
+  const changeEnds = tiebreak
+    ? ((gp.A + gp.B) > 0 && (gp.A + gp.B) % 6 === 0)
+    : ((games.A + games.B) % 2 === 1 && gp.A + gp.B === 0);
+
+  return {
+    sets, setHistory, games, gameScore, tiebreak,
+    server, changeEnds, finished, matchWinner,
+  };
 }
 
-// ---- Stats (computed from the log, tracked player = A) -----------
-
+// ---- stats -----------------------------------------------------------
 function getStats(match) {
   const pts = match.points;
   const won = pts.filter(p => p.winner === 'A');
   const lost = pts.filter(p => p.winner === 'B');
-
   const countBy = (arr, key) =>
     arr.reduce((m, p) => ((m[p[key]] = (m[p[key]] || 0) + 1), m), {});
-
   const pct = (n, d) => (d ? Math.round((n / d) * 100) : 0);
 
-  // --- Point breakdown (the four-bar charts) ---
   const winCauses = countBy(won, 'win_cause');
-  // "How you lost" = opponent's win causes, relabeled to your perspective
   const oppCauses = countBy(lost, 'win_cause');
   const lossBreakdown = {
     your_unforced_errors: oppCauses.consistency || 0,
@@ -152,16 +181,12 @@ function getStats(match) {
     your_double_faults: oppCauses.opp_double_fault || 0,
   };
 
-  // --- Serve effectiveness (points where A served, toggle used) ---
   const aServes = pts.filter(p => p.server === 'A' && p.serve);
   const firstIn = aServes.filter(p => p.serve === 'first_in').length;
   const dfs = aServes.filter(p => p.serve === 'double_fault').length;
-  const secondAttempts = aServes.length - firstIn; // faulted first serves
+  const secondAttempts = aServes.length - firstIn;
   const secondIn = aServes.filter(p => p.serve === 'second_in').length;
 
-  // --- FH/BH groundstroke consistency (from stroke tap streams) ---
-  // A stroke is an error only if it was A's LAST stroke of a point
-  // that A lost to the opponent's consistency (i.e. A's unforced error).
   let fhTotal = 0, bhTotal = 0, fhErr = 0, bhErr = 0;
   for (const p of pts) {
     for (const w of p.strokes) (w === 'fh' ? fhTotal++ : bhTotal++);
@@ -172,65 +197,53 @@ function getStats(match) {
     }
   }
 
+  const mk = (n, d) => ({ n: n || 0, pct: pct(n || 0, d) });
   return {
     total: pts.length,
     win_points: won.length,
     lost_points: lost.length,
     balance_point: won.length - lost.length,
-
     how_you_won: {
-      consistency: { n: winCauses.consistency || 0, pct: pct(winCauses.consistency || 0, won.length) },
-      aggressive:  { n: winCauses.aggressive || 0,  pct: pct(winCauses.aggressive || 0, won.length) },
-      serve:       { n: winCauses.serve || 0,       pct: pct(winCauses.serve || 0, won.length) },
-      opp_double_faults: { n: winCauses.opp_double_fault || 0, pct: pct(winCauses.opp_double_fault || 0, won.length) },
+      consistency: mk(winCauses.consistency, won.length),
+      aggressive: mk(winCauses.aggressive, won.length),
+      serve: mk(winCauses.serve, won.length),
+      opp_double_faults: mk(winCauses.opp_double_fault, won.length),
     },
     how_you_lost: {
-      your_unforced_errors: { n: lossBreakdown.your_unforced_errors, pct: pct(lossBreakdown.your_unforced_errors, lost.length) },
-      opp_aggressive:       { n: lossBreakdown.opp_aggressive,       pct: pct(lossBreakdown.opp_aggressive, lost.length) },
-      opp_serve:            { n: lossBreakdown.opp_serve,            pct: pct(lossBreakdown.opp_serve, lost.length) },
-      your_double_faults:   { n: lossBreakdown.your_double_faults,   pct: pct(lossBreakdown.your_double_faults, lost.length) },
+      your_unforced_errors: mk(lossBreakdown.your_unforced_errors, lost.length),
+      opp_aggressive: mk(lossBreakdown.opp_aggressive, lost.length),
+      opp_serve: mk(lossBreakdown.opp_serve, lost.length),
+      your_double_faults: mk(lossBreakdown.your_double_faults, lost.length),
     },
-
     serve: {
       service_points: aServes.length,
       first_serve_pct: pct(firstIn, aServes.length),
       second_serve_pct: pct(secondIn, secondAttempts),
       double_faults: dfs,
     },
-
     consistency: {
       fh: { strokes: fhTotal, errors: fhErr, pct: pct(fhTotal - fhErr, fhTotal) },
       bh: { strokes: bhTotal, errors: bhErr, pct: pct(bhTotal - bhErr, bhTotal) },
     },
-
-    // Sheet 3 heatmap data: zone x wing x shot_type for aggressive
-    // wins and unforced errors (only points with shot detail tagged)
-    shot_map: pts
-      .filter(p => p.zone)
-      .map(p => ({
-        outcome: p.winner === 'A' ? 'aggressive_win' : 'unforced_error',
-        zone: p.zone, wing: p.wing, shot_type: p.shot_type,
-      })),
+    shot_map: pts.filter(p => p.zone).map(p => ({
+      outcome: p.winner === 'A' ? 'aggressive_win' : 'unforced_error',
+      zone: p.zone, wing: p.wing, shot_type: p.shot_type,
+    })),
   };
 }
 
-// ---- Persistence (localStorage) -----------------------------------
-
+// ---- persistence ------------------------------------------------------
 const STORE_PREFIX = 'courtvision_match_';
-
 function saveMatch(match) {
-  try {
-    localStorage.setItem(STORE_PREFIX + match.id, JSON.stringify(match));
-  } catch (e) { console.error('save failed', e); }
+  try { localStorage.setItem(STORE_PREFIX + match.id, JSON.stringify(match)); }
+  catch (e) { console.error('save failed', e); }
 }
-
 function loadMatch(matchId) {
   try {
     const raw = localStorage.getItem(STORE_PREFIX + matchId);
     return raw ? JSON.parse(raw) : null;
   } catch (e) { console.error('load failed', e); return null; }
 }
-
 function listMatches() {
   const out = [];
   for (let i = 0; i < localStorage.length; i++) {
@@ -243,47 +256,10 @@ function listMatches() {
   return out.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
-// ---- Exports (works as plain <script> or ES module) ---------------
-
 const CourtVisionMatch = {
   newMatch, recordServe, recordStroke, undoStroke, suggestWing,
-  savePoint, toggleServer, getStats, saveMatch, loadMatch, listMatches,
+  savePoint, toggleServer, getStats, getScore, saveMatch, loadMatch, listMatches,
   WIN_CAUSES, LOSS_CAUSE_MAP, ZONES, WINGS, SHOT_TYPES,
 };
-
 if (typeof window !== 'undefined') window.CourtVisionMatch = CourtVisionMatch;
 if (typeof module !== 'undefined') module.exports = CourtVisionMatch;
-
-/* ============================================================
-   WIRING EXAMPLE (in your existing app JS):
-
-   const M = window.CourtVisionMatch;
-   let match = M.newMatch({ playerA: 'N. Djokovic', playerB: 'A. Rinderknech' });
-
-   // Serve toggle buttons:
-   btn1stIn.onclick = () => M.recordServe(match, 'in');
-   btnFault.onclick = () => {
-     const r = M.recordServe(match, 'fault');
-     if (r.doubleFault) { M.saveMatch(match); refreshAnalytics(); }
-   };
-
-   // FH/BH thumb buttons:
-   btnFH.onclick = () => M.recordStroke(match, 'fh');
-   btnBH.onclick = () => M.recordStroke(match, 'bh');
-   btnUndo.onclick = () => M.undoStroke(match);
-
-   // Point tagging card Save:
-   //   winner: 'A' or 'B', winCause from the tapped button
-   M.savePoint(match, { winner: 'A', winCause: 'consistency' });
-   M.saveMatch(match);
-
-   // With shot detail:
-   M.savePoint(match, {
-     winner: 'A', winCause: 'aggressive',
-     shotDetail: { zone: 'ahead_baseline', wing: M.suggestWing(match) || 'fh', shotType: 'cross_court' },
-   });
-
-   // Analytics tab:
-   const stats = M.getStats(match);
-   // stats.how_you_won.consistency -> { n: 16, pct: 47 } etc.
-   ============================================================ */

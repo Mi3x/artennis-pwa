@@ -1,23 +1,21 @@
 /* ============================================================
-   CourtVision — tagging-ui.js
-   Self-contained tagging UI. Requires match-logic.js loaded first.
-   Adds a floating 🎾 button that opens the tagging panel:
-   serve toggle → FH/BH taps → end rally → point card →
-   (optional) shot detail card → live Point Breakdown stats.
-   Data auto-saves to localStorage.
+   CourtVision — tagging-ui.js  (v2)
+   Requires match-logic.js (v2) loaded first.
+   New: match setup screen (real names), automatic tennis score
+   (games/sets/tiebreak), auto server rotation, change-ends banner,
+   New match button. Keeps: wizard flow, tap flash, stats page,
+   shot map, point log, Analytics-tab mirror.
    ============================================================ */
 (function () {
   const M = window.CourtVisionMatch;
   if (!M) { console.error('tagging-ui: load match-logic.js first'); return; }
 
-  // ---- match: reload last one or create new --------------------
-  let match;
+  let match = null;
   const saved = M.listMatches();
   if (saved.length) match = M.loadMatch(saved[0].id);
-  if (!match) match = M.newMatch({ playerA: 'N. Djokovic', playerB: 'A. Rinderknech', server: 'A' });
-  window.cvMatch = match; // for console debugging
+  window.cvMatch = match;
 
-  // ---- styles ----------------------------------------------------
+  // ---- styles ------------------------------------------------------
   const css = `
   .cvt-fab{position:fixed;bottom:84px;right:16px;z-index:9998;background:#d9f64b;color:#1c330f;
     border:none;border-radius:999px;padding:12px 18px;font-weight:600;font-size:14px;
@@ -33,7 +31,6 @@
   .cvt-btn{background:#1d4028;border:1px solid #2c5638;color:#cfe6d4;border-radius:10px;
     padding:10px 12px;font-size:13px;cursor:pointer;font-family:inherit}
   .cvt-btn.sel{background:#d9f64b;color:#1c330f;border-color:#d9f64b;font-weight:600}
-  .cvt-btn.dim{opacity:.45}
   .cvt-grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
   .cvt-big{padding:24px 8px;font-size:20px;font-weight:600;border-radius:16px;text-align:center}
   .cvt-auto{display:none;align-items:center;gap:8px;background:#2e4a1f;border:1.5px solid #d9f64b;
@@ -61,18 +58,24 @@
   .cvt-card b{font-size:20px;color:#d9f64b;display:block}
   .cvt-card span{font-size:11px;color:#9fc9aa}
   .cvt-card.hl{background:#d9f64b}.cvt-card.hl b{color:#1c330f}.cvt-card.hl span{color:#3d5a1e}
+  .cvt-score{display:flex;gap:14px;align-items:center;background:#1d4028;border-radius:12px;
+    padding:10px 14px;margin-bottom:12px;font-size:13px}
+  .cvt-score b{color:#d9f64b;font-size:16px}
+  .cvt-ends{display:none;background:#e8975a;color:#1c330f;border-radius:10px;padding:8px 12px;
+    font-size:13px;font-weight:600;margin-bottom:12px;text-align:center}
+  .cvt-ends.show{display:block}
+  .cvt-input{width:100%;box-sizing:border-box;background:#1d4028;border:1px solid #2c5638;color:#f0f7ec;
+    border-radius:10px;padding:11px 12px;font-size:14px;font-family:inherit;margin-bottom:10px}
   `;
   const st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
 
-  // ---- helpers ----------------------------------------------------
   const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
   const names = () => match.players;
 
-  // ---- UI state ---------------------------------------------------
   let selWinner = null, selCause = null, selZone = null, selWing = null, selShot = null;
   let secondServe = false;
 
-  // ---- build panel --------------------------------------------------
+  // ---- build panel ----------------------------------------------------
   const fab = el('button', 'cvt-fab', '🎾 Tag match');
   const panel = el('div', 'cvt-panel');
   document.body.appendChild(fab); document.body.appendChild(panel);
@@ -81,17 +84,30 @@
     <div class="cvt-head">
       <span class="cvt-label" id="cvt-title">Live tagging</span>
       <span>
+        <button class="cvt-x" id="cvt-newmatch">＋ new match</button>
         <button class="cvt-x" id="cvt-viewstats">📊 stats</button>
         <button class="cvt-x" id="cvt-close">✕ close</button>
       </span>
     </div>
 
-    <div id="cvt-live">
+    <div class="cvt-sec" id="cvt-setup">
+      <p class="cvt-q">Match setup</p>
+      <p class="cvt-label" style="margin-bottom:4px">Your player</p>
+      <input class="cvt-input" id="cvt-nameA" placeholder="e.g. Mali S." />
+      <p class="cvt-label" style="margin-bottom:4px">Opponent</p>
+      <input class="cvt-input" id="cvt-nameB" placeholder="e.g. K. Boon" />
+      <p class="cvt-q" style="font-size:13px">Who serves first?</p>
+      <div class="cvt-grid2" id="cvt-firstserver"></div>
+      <button class="cvt-save" id="cvt-start">Start match</button>
+    </div>
+
+    <div id="cvt-live" style="display:none">
+      <div class="cvt-score" id="cvt-scoreboard"></div>
+      <div class="cvt-ends" id="cvt-ends">🔄 Change ends</div>
       <div class="cvt-row">
         <span style="font-size:12px;color:#9fc9aa" id="cvt-server"></span>
         <button class="cvt-btn cvt-pill" id="cvt-sin">1st in</button>
         <button class="cvt-btn cvt-pill" id="cvt-sfault">Fault</button>
-        <button class="cvt-btn cvt-pill" id="cvt-switch" style="margin-left:auto">Switch server</button>
       </div>
       <div class="cvt-row" style="justify-content:space-between">
         <span style="font-size:12px;color:#9fc9aa" id="cvt-tally">FH 0 · BH 0</span>
@@ -143,7 +159,6 @@
       <div id="cvt-shotmap"></div>
       <div id="cvt-log"></div>
       <button class="cvt-save" id="cvt-next">Next point →</button>
-
       <div class="cvt-cards" style="margin-top:12px">
         <div class="cvt-card"><b id="cvt-s1">–</b><span>1st serve %</span></div>
         <div class="cvt-card"><b id="cvt-fhc">–</b><span>FH consistency</span></div>
@@ -154,7 +169,36 @@
 
   const $ = id => panel.querySelector('#' + id);
 
-  // ---- winner + cause buttons ------------------------------------
+  const SCREENS = ['cvt-setup', 'cvt-live', 'cvt-point', 'cvt-shot', 'cvt-stats'];
+  function showScreen(id) {
+    SCREENS.forEach(s => {
+      const n = $(s);
+      if (s === 'cvt-live') n.style.display = (s === id) ? 'block' : 'none';
+      else n.classList.toggle('show', s === id);
+    });
+  }
+
+  // ---- setup screen ------------------------------------------------------
+  let selFirstServer = 'A';
+  function buildSetup() {
+    const box = $('cvt-firstserver'); box.innerHTML = '';
+    [['A', 'Your player'], ['B', 'Opponent']].forEach(([k, label]) => {
+      const b = el('button', 'cvt-btn' + (k === selFirstServer ? ' sel' : ''), label);
+      b.onclick = () => { selFirstServer = k; [...box.children].forEach(c => c.classList.remove('sel')); b.classList.add('sel'); };
+      box.appendChild(b);
+    });
+  }
+  $('cvt-start').onclick = () => {
+    const a = $('cvt-nameA').value.trim() || 'Player';
+    const b = $('cvt-nameB').value.trim() || 'Opponent';
+    match = M.newMatch({ playerA: a, playerB: b, server: selFirstServer });
+    window.cvMatch = match;
+    M.saveMatch(match);
+    updateLive(); renderStats(); showScreen('cvt-live');
+  };
+  $('cvt-newmatch').onclick = () => { buildSetup(); showScreen('cvt-setup'); };
+
+  // ---- point card -----------------------------------------------------------
   function buildPointCard() {
     const w = $('cvt-winners'); w.innerHTML = '';
     [['A', names().A], ['B', names().B]].forEach(([k, name]) => {
@@ -180,7 +224,7 @@
     } else line.classList.remove('show');
   }
 
-  // ---- shot detail card -------------------------------------------
+  // ---- shot detail ------------------------------------------------------------
   function buildShotCard() {
     const zoneLabels = { net_play: 'Net play', middle_court: 'Middle court', ahead_baseline: 'Ahead of baseline', behind_baseline: 'Behind baseline' };
     const z = $('cvt-zones'); z.innerHTML = '';
@@ -204,12 +248,13 @@
     });
   }
 
-  // ---- stats rendering ---------------------------------------------
+  // ---- stats -----------------------------------------------------------------
   const BAR_DEFS = [
     ['How you won', [['consistency', 'Consistency play'], ['aggressive', 'Aggressive play'], ['serve', 'Serve play'], ['opp_double_faults', 'Opp. double faults']], 'how_you_won', ''],
     ['How you lost', [['your_unforced_errors', 'Your unforced errors'], ['opp_aggressive', 'Opp. aggressive play'], ['opp_serve', 'Opp. serve'], ['your_double_faults', 'Your double faults']], 'how_you_lost', 'loss'],
   ];
   function renderStats() {
+    if (!match) return;
     const s = M.getStats(match);
     $('cvt-wp').textContent = s.win_points;
     $('cvt-lp').textContent = s.lost_points;
@@ -224,77 +269,84 @@
         fill.style.width = d.pct + '%'; bar.appendChild(fill); box.appendChild(bar);
       });
     });
-    $('cvt-s1').textContent = s.serve.service_points ? s.serve.first_serve_pct + '%' : '–';
-    $('cvt-fhc').textContent = s.consistency.fh.strokes ? s.consistency.fh.pct + '%' : '–';
-    $('cvt-bhc').textContent = s.consistency.bh.strokes ? s.consistency.bh.pct + '%' : '–';
-    // --- Shot selection & court position (Sheet 3) ---
-    const zl = { net_play:'Net play', middle_court:'Middle court', ahead_baseline:'Ahead of baseline', behind_baseline:'Behind baseline' };
-    const sl = { volley:'volley', down_the_line:'down the line', cross_court:'cross court', smash:'smash', slice:'slice', lob:'lob', angle:'angle', drop_shot:'drop shot' };
+
+    // Shot selection & court position
+    const zl = { net_play: 'Net play', middle_court: 'Middle court', ahead_baseline: 'Ahead of baseline', behind_baseline: 'Behind baseline' };
+    const sl = { volley: 'volley', down_the_line: 'down the line', cross_court: 'cross court', smash: 'smash', slice: 'slice', lob: 'lob', angle: 'angle', drop_shot: 'drop shot' };
     const sm = $('cvt-shotmap'); sm.innerHTML = '';
     if (s.shot_map.length) {
-      sm.appendChild(el('p','cvt-q','Shot selection & court position'));
-      // per zone: wins vs errors
+      sm.appendChild(el('p', 'cvt-q', 'Shot selection & court position'));
       M.ZONES.forEach(z => {
         const inZone = s.shot_map.filter(x => x.zone === z);
         if (!inZone.length) return;
         const w = inZone.filter(x => x.outcome === 'aggressive_win').length;
         const e = inZone.length - w;
-        sm.appendChild(el('div','cvt-stat',
+        sm.appendChild(el('div', 'cvt-stat',
           `<span>${zl[z]}</span><span><span style="color:#d9f64b">${w} won</span> · <span style="color:#e8975a">${e} errors</span></span>`));
       });
-      // per shot: most used
       const byShot = {};
       s.shot_map.forEach(x => {
         if (!x.wing || !x.shot_type) return;
         const k = x.wing.toUpperCase() + ' ' + sl[x.shot_type];
-        byShot[k] = byShot[k] || { w:0, e:0 };
+        byShot[k] = byShot[k] || { w: 0, e: 0 };
         x.outcome === 'aggressive_win' ? byShot[k].w++ : byShot[k].e++;
       });
-      Object.entries(byShot).sort((a,b)=>(b[1].w+b[1].e)-(a[1].w+a[1].e)).forEach(([k,v]) => {
-        sm.appendChild(el('div','cvt-stat',
+      Object.entries(byShot).sort((a, b) => (b[1].w + b[1].e) - (a[1].w + a[1].e)).forEach(([k, v]) => {
+        sm.appendChild(el('div', 'cvt-stat',
           `<span>${k}</span><span><span style="color:#d9f64b">${v.w} won</span> · <span style="color:#e8975a">${v.e} errors</span></span>`));
       });
     }
 
-    $('cvt-stats').classList.add('show');
+    // Point log
+    const lg = $('cvt-log'); lg.innerHTML = '';
+    if (match.points.length) {
+      lg.appendChild(el('p', 'cvt-q', 'Point log'));
+      const causeL = { consistency: 'consistency', aggressive: 'aggressive', serve: 'serve', opp_double_fault: 'opp. DF' };
+      match.points.slice().reverse().forEach(p => {
+        const who = match.players[p.winner];
+        const shot = p.shot_type ? ` · ${(p.wing || '').toUpperCase()} ${p.shot_type.replace(/_/g, ' ')}` : '';
+        const srv = p.serve ? ` · ${p.serve.replace(/_/g, ' ')}` : '';
+        lg.appendChild(el('div', 'cvt-stat',
+          `<span>#${p.n} ${who}</span><span>${causeL[p.win_cause]}${srv}${shot}</span>`));
+      });
+    }
+
+    $('cvt-s1').textContent = s.serve.service_points ? s.serve.first_serve_pct + '%' : '–';
+    $('cvt-fhc').textContent = s.consistency.fh.strokes ? s.consistency.fh.pct + '%' : '–';
+    $('cvt-bhc').textContent = s.consistency.bh.strokes ? s.consistency.bh.pct + '%' : '–';
+
+    // mirror into Analytics tab
     const mount = document.getElementById('cv-breakdown');
     if (mount) {
       const c = $('cvt-stats').cloneNode(true);
       c.querySelectorAll('[id]').forEach(n => n.removeAttribute('id'));
+      c.classList.add('show');
+      const nb = c.querySelector('.cvt-save'); if (nb) nb.remove(); // no Next button in the tab
       mount.replaceChildren(c);
-    }
-    // --- Point log ---
-    const lg = $('cvt-log'); lg.innerHTML = '';
-    if (match.points.length) {
-      lg.appendChild(el('p','cvt-q','Point log'));
-      const causeL = { consistency:'consistency', aggressive:'aggressive', serve:'serve', opp_double_fault:'opp. DF' };
-      match.points.slice().reverse().forEach(p => {
-        const who = match.players[p.winner];
-        const shot = p.shot_type ? ` · ${(p.wing||'').toUpperCase()} ${p.shot_type.replace(/_/g,' ')}` : '';
-        const srv = p.serve ? ` · ${p.serve.replace(/_/g,' ')}` : '';
-        lg.appendChild(el('div','cvt-stat',
-          `<span>#${p.n} ${who}</span><span>${causeL[p.win_cause]}${srv}${shot}</span>`));
-      });
     }
   }
 
-  // ---- flow control --------------------------------------------------
-  const SCREENS = ['cvt-live', 'cvt-point', 'cvt-shot', 'cvt-stats'];
-  function showScreen(id) {
-    SCREENS.forEach(s => {
-      const n = $(s);
-      if (s === 'cvt-live') n.style.display = (s === id) ? 'block' : 'none';
-      else n.classList.toggle('show', s === id);
-    });
-  }
+  // ---- live screen / scoreboard --------------------------------------------------
   function updateLive() {
+    if (!match) return;
     const s = match.current.strokes;
     const fh = s.filter(x => x === 'fh').length;
     $('cvt-tally').textContent = `FH ${fh} · BH ${s.length - fh}`;
-    $('cvt-server').textContent = names()[match.server] + ' serving:';
+    const sc = M.getScore(match);
+    $('cvt-server').textContent = names()[sc.server] + ' serving:';
     $('cvt-sin').textContent = secondServe ? '2nd in' : '1st in';
     $('cvt-title').textContent = 'Live tagging · Point ' + (match.points.length + 1);
+
+    const setsStr = sc.setHistory.map(x => x.A + '-' + x.B).join(' ');
+    $('cvt-scoreboard').innerHTML =
+      `<span>${names().A} vs ${names().B}</span>` +
+      `<span>Sets <b>${sc.sets.A}-${sc.sets.B}</b>${setsStr ? ' <small style="color:#8fbf9a">(' + setsStr + ')</small>' : ''}</span>` +
+      `<span>Games <b>${sc.games.A}-${sc.games.B}</b></span>` +
+      `<span><b>${sc.gameScore}</b></span>` +
+      (sc.finished ? `<span style="color:#d9f64b;font-weight:600">🏆 ${names()[sc.matchWinner]} wins!</span>` : '');
+    $('cvt-ends').classList.toggle('show', sc.changeEnds && !sc.finished);
   }
+
   function resetSelections() {
     selWinner = selCause = selZone = selWing = selShot = null;
     panel.querySelectorAll('.sel').forEach(x => x.classList.remove('sel'));
@@ -306,17 +358,22 @@
     showScreen('cvt-live');
   }
 
-  fab.onclick = () => { panel.classList.toggle('open'); updateLive(); renderStats(); showScreen('cvt-live'); };
+  // ---- wiring ------------------------------------------------------------------
+  function flash(btn) { btn.classList.add('sel'); setTimeout(() => btn.classList.remove('sel'), 250); }
+
+  fab.onclick = () => {
+    panel.classList.toggle('open');
+    if (!panel.classList.contains('open')) return;
+    if (!match) { buildSetup(); showScreen('cvt-setup'); }
+    else { updateLive(); renderStats(); showScreen('cvt-live'); }
+  };
   $('cvt-close').onclick = () => panel.classList.remove('open');
-  $('cvt-viewstats').onclick = () => { renderStats(); showScreen('cvt-stats'); };
+  $('cvt-viewstats').onclick = () => { if (!match) return; renderStats(); showScreen('cvt-stats'); };
   $('cvt-next').onclick = () => showScreen('cvt-live');
-  function flash(btn) {
-    btn.classList.add('sel');
-    setTimeout(() => btn.classList.remove('sel'), 250);
-  }
+
   $('cvt-sin').onclick = (e) => {
     M.recordServe(match, 'in');
-    e.target.classList.add('sel');            // stays lime: serve is in
+    e.target.classList.add('sel');
     $('cvt-sfault').classList.remove('sel');
   };
   $('cvt-sfault').onclick = (e) => {
@@ -338,10 +395,6 @@
       selWing = M.suggestWing(match);
       buildShotCard();
       showScreen('cvt-shot');
-      if (selWing) { // pre-highlight suggested wing's first chip row label
-        const box = $(selWing === 'fh' ? 'cvt-fhchips' : 'cvt-bhchips');
-        box.previousElementSibling.style.color = '#d9f64b';
-      }
     } else {
       M.savePoint(match, { winner: selWinner, winCause: selCause });
       showLive();
@@ -353,6 +406,4 @@
   }
   $('cvt-saveshot').onclick = () => finishWithDetail((selZone || selShot) ? { zone: selZone, wing: selWing, shotType: selShot } : null);
   $('cvt-skipshot').onclick = () => finishWithDetail(null);
-
-  updateLive();
 })();
