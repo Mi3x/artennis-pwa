@@ -396,7 +396,12 @@
   $('cvt-fh').onclick = (e) => { flash(e.currentTarget); M.recordStroke(match, 'fh'); updateLive(); };
   $('cvt-bh').onclick = (e) => { flash(e.currentTarget); M.recordStroke(match, 'bh'); updateLive(); };
   $('cvt-sl').onclick = (e) => { flash(e.currentTarget); M.recordStroke(match, 'sl'); updateLive(); };
-  $('cvt-undo').onclick = () => { M.undoStroke(match); updateLive(); };
+  $('cvt-undo').onclick = (e) => {
+    if (match.current.strokes.length === 0) return; // nothing to undo
+    flash(e.currentTarget);
+    M.undoStroke(match);
+    updateLive();
+  };
 
   $('cvt-end').onclick = () => { buildPointCard(); showScreen('cvt-point'); };
   $('cvt-skippt').onclick = () => { match.current = { serve: null, serveFaults: 0, strokes: [] }; showLive(); };
