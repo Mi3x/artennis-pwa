@@ -31,15 +31,17 @@ function newMatch({ playerA, playerB, server = 'A', matchId = null }) {
 function freshPoint() { return { serve: null, serveFaults: 0, strokes: [] }; }
 
 // ---- during the point --------------------------------------------
-function recordServe(match, result) {
+function recordServe(match, result, placement = null) {
   const cur = match.current;
   if (result === 'in') {
     cur.serve = cur.serveFaults === 0 ? 'first_in' : 'second_in';
+    cur.servePlacement = placement; // 't' | 'body' | 'angle' | null
     return { done: false, doubleFault: false };
   }
   cur.serveFaults += 1;
   if (cur.serveFaults >= 2) {
     cur.serve = 'double_fault';
+    cur.servePlacement = null;
     const winner = match.server === 'A' ? 'B' : 'A';
     savePoint(match, { winner, winCause: 'opp_double_fault' });
     return { done: true, doubleFault: true };
@@ -47,7 +49,7 @@ function recordServe(match, result) {
   return { done: false, doubleFault: false };
 }
 function recordStroke(match, wing) {
-  if (!WINGS.includes(wing)) throw new Error('wing must be fh|bh');
+  if (!['fh', 'bh', 'sl'].includes(wing)) throw new Error('wing must be fh|bh|sl');
   match.current.strokes.push(wing);
 }
 function undoStroke(match) { match.current.strokes.pop(); }
@@ -67,6 +69,7 @@ function savePoint(match, { winner, winCause, shotDetail = null }) {
     win_cause: winCause,
     loss_cause: LOSS_CAUSE_MAP[winCause],
     serve: cur.serve,
+    serve_placement: cur.servePlacement ?? null,
     strokes: cur.strokes.slice(),
     shots_in_rally: cur.strokes.length || null,
     zone: shotDetail?.zone ?? null,
@@ -187,13 +190,13 @@ function getStats(match) {
   const secondAttempts = aServes.length - firstIn;
   const secondIn = aServes.filter(p => p.serve === 'second_in').length;
 
-  let fhTotal = 0, bhTotal = 0, fhErr = 0, bhErr = 0;
+  let fhTotal = 0, bhTotal = 0, slTotal = 0, fhErr = 0, bhErr = 0, slErr = 0;
   for (const p of pts) {
-    for (const w of p.strokes) (w === 'fh' ? fhTotal++ : bhTotal++);
+    for (const w of p.strokes) (w === 'fh' ? fhTotal++ : w === 'bh' ? bhTotal++ : slTotal++);
     const isUE = p.winner === 'B' && p.win_cause === 'consistency';
     if (isUE && p.strokes.length) {
       const last = p.strokes[p.strokes.length - 1];
-      (last === 'fh' ? fhErr++ : bhErr++);
+      (last === 'fh' ? fhErr++ : last === 'bh' ? bhErr++ : slErr++);
     }
   }
 
@@ -224,6 +227,7 @@ function getStats(match) {
     consistency: {
       fh: { strokes: fhTotal, errors: fhErr, pct: pct(fhTotal - fhErr, fhTotal) },
       bh: { strokes: bhTotal, errors: bhErr, pct: pct(bhTotal - bhErr, bhTotal) },
+      sl: { strokes: slTotal, errors: slErr, pct: pct(slTotal - slErr, slTotal) },
     },
     shot_map: pts.filter(p => p.zone).map(p => ({
       outcome: p.winner === 'A' ? 'aggressive_win' : 'unforced_error',

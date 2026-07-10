@@ -106,16 +106,19 @@
       <div class="cvt-ends" id="cvt-ends">🔄 Change ends</div>
       <div class="cvt-row">
         <span style="font-size:12px;color:#9fc9aa" id="cvt-server"></span>
-        <button class="cvt-btn cvt-pill" id="cvt-sin">1st in</button>
+        <button class="cvt-btn cvt-pill cvt-serve" data-pl="t">1st in-T</button>
+        <button class="cvt-btn cvt-pill cvt-serve" data-pl="body">1st in-B</button>
+        <button class="cvt-btn cvt-pill cvt-serve" data-pl="angle">1st in-A</button>
         <button class="cvt-btn cvt-pill" id="cvt-sfault">Fault</button>
       </div>
       <div class="cvt-row" style="justify-content:space-between">
         <span style="font-size:12px;color:#9fc9aa" id="cvt-tally">FH 0 · BH 0</span>
         <button class="cvt-btn cvt-pill" id="cvt-undo">↩ undo</button>
       </div>
-      <div class="cvt-grid2">
+      <div class="cvt-grid2" style="grid-template-columns:1fr 1fr 1fr">
         <button class="cvt-btn cvt-big" id="cvt-fh">FH<br><span style="font-size:10px;font-weight:400">forehand</span></button>
         <button class="cvt-btn cvt-big" id="cvt-bh">BH<br><span style="font-size:10px;font-weight:400">backhand</span></button>
+        <button class="cvt-btn cvt-big" id="cvt-sl">SL<br><span style="font-size:10px;font-weight:400">slice</span></button>
       </div>
       <button class="cvt-save" id="cvt-end">Rally ended →</button>
     </div>
@@ -163,6 +166,7 @@
         <div class="cvt-card"><b id="cvt-s1">–</b><span>1st serve %</span></div>
         <div class="cvt-card"><b id="cvt-fhc">–</b><span>FH consistency</span></div>
         <div class="cvt-card"><b id="cvt-bhc">–</b><span>BH consistency</span></div>
+        <div class="cvt-card"><b id="cvt-slc">–</b><span>SL consistency</span></div>
       </div>
     </div>
   `;
@@ -314,6 +318,7 @@
     $('cvt-s1').textContent = s.serve.service_points ? s.serve.first_serve_pct + '%' : '–';
     $('cvt-fhc').textContent = s.consistency.fh.strokes ? s.consistency.fh.pct + '%' : '–';
     $('cvt-bhc').textContent = s.consistency.bh.strokes ? s.consistency.bh.pct + '%' : '–';
+    $('cvt-slc').textContent = s.consistency.sl.strokes ? s.consistency.sl.pct + '%' : '–';
 
     // mirror into Analytics tab
     const mount = document.getElementById('cv-breakdown');
@@ -331,10 +336,14 @@
     if (!match) return;
     const s = match.current.strokes;
     const fh = s.filter(x => x === 'fh').length;
-    $('cvt-tally').textContent = `FH ${fh} · BH ${s.length - fh}`;
+    const bh = s.filter(x => x === 'bh').length;
+    const sl = s.filter(x => x === 'sl').length;
+    $('cvt-tally').textContent = `FH ${fh} · BH ${bh} · SL ${s.length - fh - bh}`;
     const sc = M.getScore(match);
     $('cvt-server').textContent = names()[sc.server] + ' serving:';
-    $('cvt-sin').textContent = secondServe ? '2nd in' : '1st in';
+    panel.querySelectorAll('.cvt-serve').forEach(b => {
+      b.textContent = (secondServe ? '2nd in-' : '1st in-') + b.dataset.pl.charAt(0).toUpperCase();
+    });
     $('cvt-title').textContent = 'Live tagging · Point ' + (match.points.length + 1);
 
     const setsStr = sc.setHistory.map(x => x.A + '-' + x.B).join(' ');
@@ -371,11 +380,14 @@
   $('cvt-viewstats').onclick = () => { if (!match) return; renderStats(); showScreen('cvt-stats'); };
   $('cvt-next').onclick = () => showScreen('cvt-live');
 
-  $('cvt-sin').onclick = (e) => {
-    M.recordServe(match, 'in');
-    e.target.classList.add('sel');
-    $('cvt-sfault').classList.remove('sel');
-  };
+  panel.querySelectorAll('.cvt-serve').forEach(b => {
+    b.onclick = (e) => {
+      M.recordServe(match, 'in', e.target.dataset.pl);
+      panel.querySelectorAll('.cvt-serve').forEach(x => x.classList.remove('sel'));
+      e.target.classList.add('sel');
+      $('cvt-sfault').classList.remove('sel');
+    };
+  });
   $('cvt-sfault').onclick = (e) => {
     flash(e.target);
     const r = M.recordServe(match, 'fault');
@@ -383,6 +395,7 @@
   };
   $('cvt-fh').onclick = (e) => { flash(e.currentTarget); M.recordStroke(match, 'fh'); updateLive(); };
   $('cvt-bh').onclick = (e) => { flash(e.currentTarget); M.recordStroke(match, 'bh'); updateLive(); };
+  $('cvt-sl').onclick = (e) => { flash(e.currentTarget); M.recordStroke(match, 'sl'); updateLive(); };
   $('cvt-undo').onclick = () => { M.undoStroke(match); updateLive(); };
 
   $('cvt-end').onclick = () => { buildPointCard(); showScreen('cvt-point'); };
