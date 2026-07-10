@@ -284,9 +284,11 @@
   <!-- ================= ANALYTICS ================= -->
   <section id="tab-stats">
     <h1>Rally analytics</h1>
+    <p style="text-align:center;font-size:12px;color:#e8975a;letter-spacing:1px;margin:0 0 16px">⚠ DEMO — preview of automated tracking, coming soon</p>
     <p class="sub">Computed from the tracked trajectory — no manual tagging.</p>
     
-    <div id="cv-breakdown" style="max-width:440px;margin:24px auto;background:#12291a;border-radius:16px;padding:20px"></div>
+    
+    
 
 
     <div class="stat-grid">
@@ -317,31 +319,105 @@
         <g id="placeLayer"></g>
       </svg>
     </div>
+<p style="text-align:center;font-size:12px;color:#d9f64b;letter-spacing:1px;margin:24px 0 8px">● YOUR DATA — live from matches you tag with the 🎾 button on this device</p>
+<div id="cv-breakdown" style="max-width:440px;margin:0 auto 24px;background:#12291a;border-radius:16px;padding:20px"></div>
   </section>
 
-  <!-- ================= ANALYZE ================= -->
-  <section id="tab-analyze">
-    <h1>Analyze your footage</h1>
-    <p class="sub">Upload a rally clip. The tracker returns the annotated video and match data.</p>
+ <!-- ================= TRACKER (demo) ================= -->
+<section id="tab-analyze">
+  <p style="font-size:12px;letter-spacing:2px;color:#8fbf9a;text-transform:uppercase;text-align:center;margin:0 0 8px">CourtVision Analysis</p>
+<h1 style="text-align:center;margin:0 0 8px">Individual performance analysis<br>for tennis players</h1>
+<p class="sub" style="text-align:center;margin:0 0 18px">Send us your match video. Get an expert report in 48 hours —<br>powered by 22 years of match charting and CourtVision data.</p>
 
-    <div class="drop" id="drop">
-      <span class="ball" aria-hidden="true">🎾</span>
-      <strong>Drop a video here</strong>
-      <p>MP4 · MOV · up to 2 min per rally</p>
-      <label>Choose video<input type="file" id="fileInput" accept="video/*"></label>
-      <div class="progress" id="progress">
-        <div class="track"><div class="fill" id="fill"></div></div>
-        <p id="progLabel">Uploading…</p>
-      </div>
-    </div>
+<div style="text-align:center;margin-bottom:30px">
+  <a href="https://wa.me/66985868652?text=Hi%2C%20I%27m%20interested%20in%20a%20CourtVision%20match%20analysis"
+     style="display:inline-block;background:#d9f64b;border-radius:999px;padding:13px 28px;font-size:15px;font-weight:600;color:#1c330f;text-decoration:none">
+    💬 Chat with us on WhatsApp
+  </a>
+  <p style="font-size:12px;color:#8fbf9a;margin:8px 0 0">or try free live tagging with the 🎾 Tag match button</p>
+</div>
 
-    <ol class="steps">
-      <li><b>Detect</b> — the ball is found in every frame (motion + color model).</li>
-      <li><b>Track</b> — a Kalman filter smooths the flight path through occlusions.</li>
-      <li><b>Measure</b> — court calibration converts pixels to metres for real speeds.</li>
-      <li><b>Deliver</b> — annotated broadcast video + JSON match data, ready to share.</li>
-    </ol>
-  </section>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;max-width:620px;margin:0 auto 30px">
+  <div style="background:#1d4028;border-radius:12px;padding:16px;text-align:center">
+    <p style="font-size:26px;margin:0">📹</p>
+    <p style="font-size:14px;font-weight:600;margin:6px 0 2px">1. Send video</p>
+    <p style="font-size:12px;color:#9fc9aa;margin:0">Any phone footage of the match, via WhatsApp</p>
+  </div>
+  <div style="background:#1d4028;border-radius:12px;padding:16px;text-align:center">
+    <p style="font-size:26px;margin:0">🎾</p>
+    <p style="font-size:14px;font-weight:600;margin:6px 0 2px">2. We analyze</p>
+    <p style="font-size:12px;color:#9fc9aa;margin:0">Every point tagged &amp; charted by an expert</p>
+  </div>
+  <div style="background:#1d4028;border-radius:12px;padding:16px;text-align:center">
+    <p style="font-size:26px;margin:0">📊</p>
+    <p style="font-size:14px;font-weight:600;margin:6px 0 2px">3. Get report</p>
+    <p style="font-size:12px;color:#9fc9aa;margin:0">Stats, patterns &amp; this week's training focus</p>
+  </div>
+</div>
+
+<p style="font-size:12px;letter-spacing:1.5px;color:#8fbf9a;text-transform:uppercase;text-align:center;margin:0 0 12px">What's in your report</p>
+<div id="cv-report-preview" style="max-width:460px;margin:0 auto 10px"></div>
+<p style="font-size:12px;color:#9fc9aa;text-align:center;max-width:520px;margin:0 auto 8px">✓ Point breakdown &nbsp;✓ Serve placement (T·Body·Angle) &nbsp;✓ FH/BH/SL consistency &nbsp;✓ Shot selection by court zone &nbsp;✓ Pressure points &nbsp;✓ Coach's training plan</p>
+<p style="font-size:13px;color:#b8d4bf;font-style:italic;max-width:480px;margin:0 auto 30px;padding-left:12px;border-left:3px solid #d9f64b">"She wins at the net but leaks errors hitting down the line from behind the baseline — this week we train the approach pattern."<br><span style="font-style:normal;font-size:11px;color:#8fbf9a">— example insight from a real report</span></p>
+
+<p style="font-size:12px;letter-spacing:1.5px;color:#8fbf9a;text-transform:uppercase;text-align:center;margin:0 0 12px">Packages</p>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;max-width:620px;margin:0 auto 30px">
+  <div style="background:#1d4028;border-radius:12px;padding:16px 12px;text-align:center;border:1px solid #2c5638">
+    <p style="font-size:14px;font-weight:600;margin:0 0 4px">Single Match</p>
+    <p style="font-size:12px;color:#9fc9aa;margin:0 0 10px">Full report, 1 match</p>
+    <p style="font-size:14px;color:#d9f64b;font-weight:700;margin:0">Contact for price</p>
+  </div>
+  <div style="background:#2e4a1f;border-radius:12px;padding:16px 12px;text-align:center;border:1.5px solid #d9f64b;position:relative">
+    <span style="position:absolute;top:-9px;left:50%;transform:translateX(-50%);background:#d9f64b;border-radius:8px;font-size:10px;font-weight:700;color:#1c330f;padding:2px 10px;white-space:nowrap">POPULAR</span>
+    <p style="font-size:14px;font-weight:600;margin:0 0 4px">Monthly</p>
+    <p style="font-size:12px;color:#9fc9aa;margin:0 0 10px">4 matches + weekly review</p>
+    <p style="font-size:14px;color:#d9f64b;font-weight:700;margin:0">Contact for price</p>
+  </div>
+  <div style="background:#1d4028;border-radius:12px;padding:16px 12px;text-align:center;border:1px solid #2c5638">
+    <p style="font-size:14px;font-weight:600;margin:0 0 4px">Tournament</p>
+    <p style="font-size:12px;color:#9fc9aa;margin:0 0 10px">All matches + opponent notes</p>
+    <p style="font-size:14px;color:#d9f64b;font-weight:700;margin:0">Contact for price</p>
+  </div>
+</div>
+
+<div style="background:#12291a;border:1px solid #2c5638;border-radius:12px;padding:16px;display:flex;align-items:center;gap:14px;max-width:620px;margin:0 auto 20px">
+  <span style="font-size:30px">🎾</span>
+  <p style="font-size:13px;color:#b8d4bf;margin:0">Analysis by a coach with <b style="color:#f0f7ec">22 years of match charting</b> — the same system behind the free CourtVision app on this site. Automated video tracking is coming; expert eyes are here today.</p>
+</div>
+
+<div style="text-align:center;margin-bottom:10px">
+  <a href="https://wa.me/66985868652?text=Hi%2C%20I%27m%20interested%20in%20a%20CourtVision%20match%20analysis"
+     style="display:inline-block;background:#d9f64b;border-radius:999px;padding:13px 28px;font-size:15px;font-weight:600;color:#1c330f;text-decoration:none">
+    💬 Start on WhatsApp
+  </a>
+</div>
+</section>
+
+  
+<section id="tab-tracker">
+  <h1 style="text-align:center;margin:0 0 8px">Analyze your footage</h1>
+  <p class="sub" style="text-align:center;margin:0 0 18px">Upload a rally clip. The tracker returns the annotated video and match data.</p>
+
+  <div id="drop" style="max-width:900px;margin:0 auto 24px;background:#1d4a2a;border:2px dashed #7fb88a;border-radius:16px;padding:60px 20px;text-align:center">
+    <p style="font-size:30px;margin:0 0 10px">🏸</p>
+    <p style="font-size:16px;font-weight:600;margin:0 0 6px">Drop a video here</p>
+    <p style="font-size:14px;color:#b8d4bf;margin:0 0 16px">MP4 · MOV · up to 2 min per rally</p>
+    <button id="chooseBtn" style="background:#d9f64b;border:none;border-radius:10px;padding:12px 26px;font-size:15px;font-weight:600;color:#1c330f;cursor:pointer">Choose video</button>
+    <input type="file" id="fileInput" accept="video/mp4,video/quicktime" hidden>
+  </div>
+
+  <div id="progress" hidden style="max-width:900px;margin:0 auto 24px">
+    <div style="background:#1d4028;border-radius:6px;height:12px;overflow:hidden"><div id="fill" style="background:#d9f64b;height:12px;width:0%"></div></div>
+    <p id="progLabel" style="font-size:13px;color:#9fc9aa;text-align:center;margin:8px 0 0"></p>
+  </div>
+
+  <ol style="max-width:700px;margin:0 auto;font-size:15px;line-height:1.9">
+    <li><b>Detect</b> — the ball is found in every frame (motion + color model).</li>
+    <li><b>Track</b> — a Kalman filter smooths the flight path through occlusions.</li>
+    <li><b>Measure</b> — court calibration converts pixels to metres for real speeds.</li>
+    <li><b>Deliver</b> — annotated broadcast video + JSON match data, ready to share.</li>
+  </ol>
+</section>
 </main>
 
 <nav aria-label="Sections">
@@ -353,17 +429,48 @@
     <svg viewBox="0 0 24 24"><line x1="5" y1="20" x2="5" y2="12"/><line x1="12" y1="20" x2="12" y2="6"/><line x1="19" y1="20" x2="19" y2="10"/></svg>
     ANALYTICS
   </button>
-  <button data-tab="analyze" aria-label="Analyze footage">
-    <svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>
+  <button data-tab="analyze" aria-label="Coaching service">
+    <svg viewBox="0 0 24 24"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"/><path d="M12 2v3"/><path d="M12 19v3"/><path d="M2 12h3"/><path d="M19 12h3"/></svg>
     ANALYZE
+  </button>
+  <button data-tab="tracker" aria-label="Tracker demo">
+    <svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>
+    TRACKER
   </button>
 </nav>
 
 <div class="toast" id="toast" role="status"></div>
-
-
 <script src="match-logic.js"></script>
+<script src="charts.js"></script>
 <script src="tagging-ui.js"></script>
+<script>
+(function () {
+  var mountEl = document.getElementById('cv-report-preview');
+  if (!mountEl || !window.CourtVisionCharts || !window.CourtVisionMatch) return;
+  var M = window.CourtVisionMatch;
+  var m = window.cvMatch;
+  if (!m || !m.points || m.points.length < 3) {
+    // demo match so the preview always looks alive
+    m = M.newMatch({ playerA: 'Demo Player', playerB: 'Opponent', server: 'A' });
+    function pt(w, cause, pl, strokes, detail) {
+      if (pl) M.recordServe(m, 'in', pl);
+      (strokes || []).forEach(function (s) { M.recordStroke(m, s); });
+      M.savePoint(m, { winner: w, winCause: cause, shotDetail: detail || null });
+    }
+    pt('A','serve','t');
+    pt('A','aggressive','t',['fh','fh'],{zone:'net_play',wing:'fh',shotType:'volley'});
+    pt('A','consistency','body',['fh','bh','fh']);
+    pt('B','consistency','angle',['fh','bh'],{zone:'behind_baseline',wing:'bh',shotType:'cross_court'});
+    pt('A','aggressive','t',['fh'],{zone:'ahead_baseline',wing:'fh',shotType:'down_the_line'});
+    pt('B','aggressive','t',['bh'],{zone:'behind_baseline',wing:'bh',shotType:'down_the_line'});
+    pt('A','consistency','t',['bh','fh','fh']);
+    pt('A','serve','angle');
+  }
+  window.CourtVisionCharts.renderInto(mountEl, m);
+})();
+</script>
+
+
 <script>
 const M = window.CourtVisionMatch;
 
@@ -540,16 +647,20 @@ const progLabel = document.getElementById("progLabel");
 const PHASES = ["Uploading…", "Detecting ball…", "Tracking trajectory…",
                 "Calibrating court…", "Measuring speeds…", "Rendering overlays…"];
 
-["dragover", "dragenter"].forEach(ev =>
-  drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("over"); }));
-["dragleave", "drop"].forEach(ev =>
-  drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove("over"); }));
-drop.addEventListener("drop", e => {
-  if (e.dataTransfer.files.length) startAnalysis(e.dataTransfer.files[0]);
-});
-fileInput.addEventListener("change", () => {
-  if (fileInput.files.length) startAnalysis(fileInput.files[0]);
-});
+if (drop && fileInput) {
+  ["dragover", "dragenter"].forEach(ev =>
+    drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("over"); }));
+  ["dragleave", "drop"].forEach(ev =>
+    drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove("over"); }));
+  drop.addEventListener("drop", e => {
+    if (e.dataTransfer.files.length) startAnalysis(e.dataTransfer.files[0]);
+  });
+  fileInput.addEventListener("change", () => {
+    if (fileInput.files.length) startAnalysis(fileInput.files[0]);
+  });
+  const cb = document.getElementById('chooseBtn');
+  if (cb) cb.onclick = () => fileInput.click();
+}
 
 function startAnalysis(file) {
   progress.classList.add("show");

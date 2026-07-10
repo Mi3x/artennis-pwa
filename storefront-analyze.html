@@ -1,0 +1,120 @@
+<!-- ============================================================
+  CourtVision — Analyze tab storefront (Phase 2, Step 2)
+
+  HOW TO INSTALL (2 parts):
+
+  PART 1: In index.html, find the Analyze section:
+     Ctrl+F: "Analyze your footage"
+  Select from the <h1> line down to the end of the numbered
+  Detect/Track/Measure/Deliver list (keep the section's outer
+  <section>/<div> wrapper!) and REPLACE with everything between
+  PART-1-START and PART-1-END below.
+
+  PART 2: In index.html, find (near line ~363):
+     <script src="tagging-ui.js"></script>
+  and paste the PART-2 script block on a new line BELOW it.
+
+  LATER: replace WA_NUMBER_HERE with your WhatsApp number in
+  international format, e.g. 66812345678 (appears in 2 places).
+============================================================ -->
+
+<!-- ==================== PART-1-START ==================== -->
+<p style="font-size:12px;letter-spacing:2px;color:#8fbf9a;text-transform:uppercase;text-align:center;margin:0 0 8px">CourtVision Analysis</p>
+<h1 style="text-align:center;margin:0 0 8px">Individual performance analysis<br>for tennis players</h1>
+<p class="sub" style="text-align:center;margin:0 0 18px">Send us your match video. Get an expert report in 48 hours —<br>powered by 22 years of match charting and CourtVision data.</p>
+
+<div style="text-align:center;margin-bottom:30px">
+  <a href="https://wa.me/WA_NUMBER_HERE?text=Hi%2C%20I%27m%20interested%20in%20a%20CourtVision%20match%20analysis"
+     style="display:inline-block;background:#d9f64b;border-radius:999px;padding:13px 28px;font-size:15px;font-weight:600;color:#1c330f;text-decoration:none">
+    💬 Chat with us on WhatsApp
+  </a>
+  <p style="font-size:12px;color:#8fbf9a;margin:8px 0 0">or try free live tagging with the 🎾 Tag match button</p>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;max-width:620px;margin:0 auto 30px">
+  <div style="background:#1d4028;border-radius:12px;padding:16px;text-align:center">
+    <p style="font-size:26px;margin:0">📹</p>
+    <p style="font-size:14px;font-weight:600;margin:6px 0 2px">1. Send video</p>
+    <p style="font-size:12px;color:#9fc9aa;margin:0">Any phone footage of the match, via WhatsApp</p>
+  </div>
+  <div style="background:#1d4028;border-radius:12px;padding:16px;text-align:center">
+    <p style="font-size:26px;margin:0">🎾</p>
+    <p style="font-size:14px;font-weight:600;margin:6px 0 2px">2. We analyze</p>
+    <p style="font-size:12px;color:#9fc9aa;margin:0">Every point tagged &amp; charted by an expert</p>
+  </div>
+  <div style="background:#1d4028;border-radius:12px;padding:16px;text-align:center">
+    <p style="font-size:26px;margin:0">📊</p>
+    <p style="font-size:14px;font-weight:600;margin:6px 0 2px">3. Get report</p>
+    <p style="font-size:12px;color:#9fc9aa;margin:0">Stats, patterns &amp; this week's training focus</p>
+  </div>
+</div>
+
+<p style="font-size:12px;letter-spacing:1.5px;color:#8fbf9a;text-transform:uppercase;text-align:center;margin:0 0 12px">What's in your report</p>
+<div id="cv-report-preview" style="max-width:460px;margin:0 auto 10px"></div>
+<p style="font-size:12px;color:#9fc9aa;text-align:center;max-width:520px;margin:0 auto 8px">✓ Point breakdown &nbsp;✓ Serve placement (T·Body·Angle) &nbsp;✓ FH/BH/SL consistency &nbsp;✓ Shot selection by court zone &nbsp;✓ Pressure points &nbsp;✓ Coach's training plan</p>
+<p style="font-size:13px;color:#b8d4bf;font-style:italic;max-width:480px;margin:0 auto 30px;padding-left:12px;border-left:3px solid #d9f64b">"She wins at the net but leaks errors hitting down the line from behind the baseline — this week we train the approach pattern."<br><span style="font-style:normal;font-size:11px;color:#8fbf9a">— example insight from a real report</span></p>
+
+<p style="font-size:12px;letter-spacing:1.5px;color:#8fbf9a;text-transform:uppercase;text-align:center;margin:0 0 12px">Packages</p>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;max-width:620px;margin:0 auto 30px">
+  <div style="background:#1d4028;border-radius:12px;padding:16px 12px;text-align:center;border:1px solid #2c5638">
+    <p style="font-size:14px;font-weight:600;margin:0 0 4px">Single Match</p>
+    <p style="font-size:12px;color:#9fc9aa;margin:0 0 10px">Full report, 1 match</p>
+    <p style="font-size:14px;color:#d9f64b;font-weight:700;margin:0">Contact for price</p>
+  </div>
+  <div style="background:#2e4a1f;border-radius:12px;padding:16px 12px;text-align:center;border:1.5px solid #d9f64b;position:relative">
+    <span style="position:absolute;top:-9px;left:50%;transform:translateX(-50%);background:#d9f64b;border-radius:8px;font-size:10px;font-weight:700;color:#1c330f;padding:2px 10px;white-space:nowrap">POPULAR</span>
+    <p style="font-size:14px;font-weight:600;margin:0 0 4px">Monthly</p>
+    <p style="font-size:12px;color:#9fc9aa;margin:0 0 10px">4 matches + weekly review</p>
+    <p style="font-size:14px;color:#d9f64b;font-weight:700;margin:0">Contact for price</p>
+  </div>
+  <div style="background:#1d4028;border-radius:12px;padding:16px 12px;text-align:center;border:1px solid #2c5638">
+    <p style="font-size:14px;font-weight:600;margin:0 0 4px">Tournament</p>
+    <p style="font-size:12px;color:#9fc9aa;margin:0 0 10px">All matches + opponent notes</p>
+    <p style="font-size:14px;color:#d9f64b;font-weight:700;margin:0">Contact for price</p>
+  </div>
+</div>
+
+<div style="background:#12291a;border:1px solid #2c5638;border-radius:12px;padding:16px;display:flex;align-items:center;gap:14px;max-width:620px;margin:0 auto 20px">
+  <span style="font-size:30px">🎾</span>
+  <p style="font-size:13px;color:#b8d4bf;margin:0">Analysis by a coach with <b style="color:#f0f7ec">22 years of match charting</b> — the same system behind the free CourtVision app on this site. Automated video tracking is coming; expert eyes are here today.</p>
+</div>
+
+<div style="text-align:center;margin-bottom:10px">
+  <a href="https://wa.me/WA_NUMBER_HERE?text=Hi%2C%20I%27m%20interested%20in%20a%20CourtVision%20match%20analysis"
+     style="display:inline-block;background:#d9f64b;border-radius:999px;padding:13px 28px;font-size:15px;font-weight:600;color:#1c330f;text-decoration:none">
+    💬 Start on WhatsApp
+  </a>
+</div>
+<!-- ==================== PART-1-END ==================== -->
+
+
+<!-- ==================== PART-2 (script) ====================
+Paste this BELOW the tagging-ui.js script tag in index.html:
+
+<script>
+(function () {
+  var mountEl = document.getElementById('cv-report-preview');
+  if (!mountEl || !window.CourtVisionCharts || !window.CourtVisionMatch) return;
+  var M = window.CourtVisionMatch;
+  var m = window.cvMatch;
+  if (!m || !m.points || m.points.length < 3) {
+    // demo match so the preview always looks alive
+    m = M.newMatch({ playerA: 'Demo Player', playerB: 'Opponent', server: 'A' });
+    function pt(w, cause, pl, strokes, detail) {
+      if (pl) M.recordServe(m, 'in', pl);
+      (strokes || []).forEach(function (s) { M.recordStroke(m, s); });
+      M.savePoint(m, { winner: w, winCause: cause, shotDetail: detail || null });
+    }
+    pt('A','serve','t');
+    pt('A','aggressive','t',['fh','fh'],{zone:'net_play',wing:'fh',shotType:'volley'});
+    pt('A','consistency','body',['fh','bh','fh']);
+    pt('B','consistency','angle',['fh','bh'],{zone:'behind_baseline',wing:'bh',shotType:'cross_court'});
+    pt('A','aggressive','t',['fh'],{zone:'ahead_baseline',wing:'fh',shotType:'down_the_line'});
+    pt('B','aggressive','t',['bh'],{zone:'behind_baseline',wing:'bh',shotType:'down_the_line'});
+    pt('A','consistency','t',['bh','fh','fh']);
+    pt('A','serve','angle');
+  }
+  window.CourtVisionCharts.renderInto(mountEl, m);
+})();
+</script>
+============================================================ -->

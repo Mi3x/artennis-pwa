@@ -158,6 +158,7 @@
         <div class="cvt-card"><b id="cvt-lp" style="color:#f0f7ec">0</b><span>Lost points</span></div>
         <div class="cvt-card hl"><b id="cvt-bp">0</b><span>Balance point</span></div>
       </div>
+      <div id="cvt-visuals"></div>
       <div id="cvt-bars"></div>
       <div id="cvt-shotmap"></div>
       <div id="cvt-log"></div>
@@ -263,6 +264,7 @@
     $('cvt-wp').textContent = s.win_points;
     $('cvt-lp').textContent = s.lost_points;
     $('cvt-bp').textContent = (s.balance_point >= 0 ? '+' : '') + s.balance_point;
+    if (window.CourtVisionCharts) CourtVisionCharts.renderInto($('cvt-visuals'), match);
     const box = $('cvt-bars'); box.innerHTML = '';
     BAR_DEFS.forEach(([title, rows, key, lossCls]) => {
       box.appendChild(el('p', 'cvt-q', title));
