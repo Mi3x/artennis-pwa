@@ -116,9 +116,9 @@
         <button class="cvt-btn cvt-pill" id="cvt-undo">↩ undo</button>
       </div>
       <div class="cvt-grid2" style="grid-template-columns:1fr 1fr 1fr">
-        <button class="cvt-btn cvt-big" id="cvt-fh">FH<br><span style="font-size:10px;font-weight:400">forehand</span></button>
-        <button class="cvt-btn cvt-big" id="cvt-bh">BH<br><span style="font-size:10px;font-weight:400">backhand</span></button>
-        <button class="cvt-btn cvt-big" id="cvt-sl">SL<br><span style="font-size:10px;font-weight:400">slice</span></button>
+        <button class="cvt-btn cvt-big" id="cvt-fh">FH <span id="cvt-fh-n" style="color:inherit">0</span><br><span style="font-size:10px;font-weight:400">forehand</span></button>
+        <button class="cvt-btn cvt-big" id="cvt-bh">BH <span id="cvt-bh-n" style="color:inherit">0</span><br><span style="font-size:10px;font-weight:400">backhand</span></button>
+        <button class="cvt-btn cvt-big" id="cvt-sl">SL <span id="cvt-sl-n" style="color:inherit">0</span><br><span style="font-size:10px;font-weight:400">slice</span></button>
       </div>
       <button class="cvt-save" id="cvt-end">Rally ended →</button>
     </div>
@@ -152,7 +152,7 @@
     </div>
 
     <div class="cvt-sec" id="cvt-stats">
-      <p class="cvt-label" style="margin-bottom:10px">Point breakdown</p>
+      <p class="cvt-label" style="margin-bottom:10px" id="cvt-statshead">Point breakdown</p>
       <div class="cvt-cards">
         <div class="cvt-card"><b id="cvt-wp">0</b><span>Win points</span></div>
         <div class="cvt-card"><b id="cvt-lp" style="color:#f0f7ec">0</b><span>Lost points</span></div>
@@ -261,6 +261,8 @@
   function renderStats() {
     if (!match) return;
     const s = M.getStats(match);
+    $('cvt-statshead').textContent = 'Point breakdown · ' + names().A + ' vs ' + names().B +
+      ' · ' + new Date(match.createdAt).toLocaleDateString();
     $('cvt-wp').textContent = s.win_points;
     $('cvt-lp').textContent = s.lost_points;
     $('cvt-bp').textContent = (s.balance_point >= 0 ? '+' : '') + s.balance_point;
@@ -341,6 +343,9 @@
     const bh = s.filter(x => x === 'bh').length;
     const sl = s.filter(x => x === 'sl').length;
     $('cvt-tally').textContent = `FH ${fh} · BH ${bh} · SL ${s.length - fh - bh}`;
+    $('cvt-fh-n').textContent = fh;
+    $('cvt-bh-n').textContent = bh;
+    $('cvt-sl-n').textContent = sl;
     const sc = M.getScore(match);
     $('cvt-server').textContent = names()[sc.server] + ' serving:';
     panel.querySelectorAll('.cvt-serve').forEach(b => {
