@@ -1,10 +1,18 @@
 /* ============================================================
-   CourtVision — tagging-ui.js  (v2)
-   Requires match-logic.js (v2) loaded first.
-   New: match setup screen (real names), automatic tennis score
-   (games/sets/tiebreak), auto server rotation, change-ends banner,
-   New match button. Keeps: wizard flow, tap flash, stats page,
-   shot map, point log, Analytics-tab mirror.
+   CourtVision — tagging-ui.js  (v4)
+   New in v4:
+   - "Rally ended" opens a 2×3 one-tap card:
+       rows = players, columns = Winner / Forced err / Unforced.
+     One tap derives winner + cause (serve play auto-detected when
+     the server won with zero rally taps) and saves the point.
+   - Shot detail card streamlined: auto chip with the final shot
+     from the last grid tap + "change" link (grids expand only on
+     demand) + zone strip + Save. Shown only when the tracked
+     player's shot ended the rally (her winner / her error / her
+     forcing shot on opponent's forced error).
+   Keeps everything else: 3×3 grids with per-cell counts, serve
+   placement, auto scoring, stats page, charts, MATCHES mirror.
+   Requires match-logic.js (v4) and charts.js loaded first.
    ============================================================ */
 (function () {
   const M = window.CourtVisionMatch;
@@ -15,7 +23,6 @@
   if (saved.length) match = M.loadMatch(saved[0].id);
   window.cvMatch = match;
 
-  // ---- styles ------------------------------------------------------
   const css = `
   .cvt-fab{position:fixed;bottom:84px;right:16px;z-index:9998;background:#d9f64b;color:#1c330f;
     border:none;border-radius:999px;padding:12px 18px;font-weight:600;font-size:14px;
@@ -32,23 +39,19 @@
     padding:10px 12px;font-size:13px;cursor:pointer;font-family:inherit}
   .cvt-btn.sel{background:#d9f64b;color:#1c330f;border-color:#d9f64b;font-weight:600}
   .cvt-grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
-  .cvt-big{padding:24px 8px;font-size:20px;font-weight:600;border-radius:16px;text-align:center}
-  .cvt-auto{display:none;align-items:center;gap:8px;background:#2e4a1f;border:1.5px solid #d9f64b;
+  .cvt-auto{display:flex;align-items:center;gap:8px;background:#2e4a1f;border:1.5px solid #d9f64b;
     border-radius:10px;padding:8px 12px;font-size:12px;color:#d9f64b;margin-bottom:12px}
-  .cvt-auto.show{display:flex}
   .cvt-pill{border-radius:999px}
   .cvt-save{display:block;margin:8px auto 0;background:#d9f64b;color:#1c330f;border:none;
     border-radius:10px;padding:11px 30px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit}
   .cvt-x{background:none;border:none;color:#8fbf9a;font-size:13px;cursor:pointer;font-family:inherit}
   .cvt-sec{display:none;border-top:1px solid #2c5638;padding-top:12px;margin-top:4px}
   .cvt-sec.show{display:block}
-  .cvt-zone{border:1.5px solid #4a7a56;border-radius:10px;overflow:hidden;width:120px;flex:none}
+  .cvt-zone{border:1.5px solid #4a7a56;border-radius:12px;overflow:hidden;width:100%;max-width:280px;margin:0 auto}
   .cvt-zone button{display:block;width:100%;background:#1d4028;border:none;border-bottom:1px dashed #4a7a56;
-    color:#cfe6d4;font-size:11px;padding:12px 4px;cursor:pointer;font-family:inherit}
+    color:#cfe6d4;font-size:12px;padding:13px 4px;cursor:pointer;font-family:inherit}
   .cvt-zone button:last-child{border-bottom:none}
   .cvt-zone button.sel{background:#d9f64b;color:#1c330f;font-weight:600}
-  .cvt-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
-  .cvt-chips .cvt-btn{padding:7px 10px;font-size:12px;border-radius:8px}
   .cvt-stat{display:flex;justify-content:space-between;font-size:12px;color:#cfe6d4;margin:8px 0 3px}
   .cvt-bar{background:#1d4028;border-radius:4px;height:10px}
   .cvt-fill{border-radius:4px;height:10px;background:#d9f64b;width:0%}
@@ -59,26 +62,52 @@
   .cvt-card span{font-size:11px;color:#9fc9aa}
   .cvt-card.hl{background:#d9f64b}.cvt-card.hl b{color:#1c330f}.cvt-card.hl span{color:#3d5a1e}
   .cvt-score{display:flex;gap:14px;align-items:center;background:#1d4028;border-radius:12px;
-    padding:10px 14px;margin-bottom:12px;font-size:13px}
+    padding:10px 14px;margin-bottom:12px;font-size:13px;flex-wrap:wrap}
   .cvt-score b{color:#d9f64b;font-size:16px}
   .cvt-ends{display:none;background:#e8975a;color:#1c330f;border-radius:10px;padding:8px 12px;
     font-size:13px;font-weight:600;margin-bottom:12px;text-align:center}
   .cvt-ends.show{display:block}
   .cvt-input{width:100%;box-sizing:border-box;background:#1d4028;border:1px solid #2c5638;color:#f0f7ec;
     border-radius:10px;padding:11px 12px;font-size:14px;font-family:inherit;margin-bottom:10px}
+  .cvt-wings{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .cvt-wingtitle{font-size:12px;font-weight:700;text-align:center;margin:0 0 6px}
+  .cvt-shotgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px}
+  .cvt-cell{position:relative;background:#1d4028;border:1px solid #2c5638;color:#cfe6d4;
+    border-radius:10px;padding:12px 2px;font-size:11px;text-align:center;cursor:pointer;font-family:inherit}
+  .cvt-cell.sel{background:#d9f64b;color:#1c330f;border-color:#d9f64b;font-weight:600}
+  .cvt-cell .n{position:absolute;top:2px;right:5px;font-size:9px;color:#8fbf9a}
+  .cvt-cell.sel .n{color:#1c330f;font-weight:700}
+  .cvt-endgrid{display:grid;grid-template-columns:76px 1fr 1fr 1fr;gap:6px;align-items:stretch}
+  .cvt-endname{display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600}
+  .cvt-endbtn{background:#1d4028;border:1px solid #2c5638;border-radius:12px;padding:14px 4px;
+    text-align:center;cursor:pointer;font-family:inherit;color:#cfe6d4}
+  .cvt-endbtn p{margin:0;font-size:18px}
+  .cvt-endbtn span{display:block;font-size:11px;margin-top:3px}
+  .cvt-chipauto{display:flex;align-items:center;gap:8px;background:#2e4a1f;border:1.5px solid #d9f64b;
+    border-radius:12px;padding:12px 14px;margin-bottom:14px}
+  .cvt-chipauto b{font-size:15px;color:#d9f64b}
+  .cvt-changegrids{display:none;margin-bottom:12px}
+  .cvt-changegrids.show{display:block}
   `;
   const st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
 
   const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
   const names = () => match.players;
 
-  let selWinner = null, selCause = null, selZone = null, selWing = null, selShot = null;
+  let selZone = null, selWing = null, selShot = null;
+  let pending = null; // derived point end waiting for shot detail
   let secondServe = false;
 
-  // ---- build panel ----------------------------------------------------
   const fab = el('button', 'cvt-fab', '🎾 Tag match');
   const panel = el('div', 'cvt-panel');
   document.body.appendChild(fab); document.body.appendChild(panel);
+
+  const cellsHTML = (wing) => M.SHOT_TYPES.map(sh =>
+    `<button class="cvt-cell" data-wing="${wing}" data-shot="${sh}">${M.SHOT_LABELS[sh]}<span class="n" id="cvt-n-${wing}-${sh}">0</span></button>`
+  ).join('');
+  const detailCellsHTML = (wing) => M.SHOT_TYPES.map(sh =>
+    `<button class="cvt-cell cvt-dcell" data-wing="${wing}" data-shot="${sh}">${M.SHOT_LABELS[sh]}</button>`
+  ).join('');
 
   panel.innerHTML = `
     <div class="cvt-head">
@@ -112,42 +141,44 @@
         <button class="cvt-btn cvt-pill" id="cvt-sfault">Fault</button>
       </div>
       <div class="cvt-row" style="justify-content:space-between">
-        <span style="font-size:12px;color:#9fc9aa" id="cvt-tally">FH 0 · BH 0</span>
+        <span style="font-size:12px;color:#9fc9aa" id="cvt-tally">Rally: FH 0 · BH 0</span>
         <button class="cvt-btn cvt-pill" id="cvt-undo">↩ undo</button>
       </div>
-      <div class="cvt-grid2" style="grid-template-columns:1fr 1fr 1fr">
-        <button class="cvt-btn cvt-big" id="cvt-fh">FH <span id="cvt-fh-n" style="color:inherit">0</span><br><span style="font-size:10px;font-weight:400">forehand</span></button>
-        <button class="cvt-btn cvt-big" id="cvt-bh">BH <span id="cvt-bh-n" style="color:inherit">0</span><br><span style="font-size:10px;font-weight:400">backhand</span></button>
-        <button class="cvt-btn cvt-big" id="cvt-sl">SL <span id="cvt-sl-n" style="color:inherit">0</span><br><span style="font-size:10px;font-weight:400">slice</span></button>
+      <div class="cvt-wings">
+        <div>
+          <p class="cvt-wingtitle" style="color:#d9f64b">FH · forehand</p>
+          <div class="cvt-shotgrid">${cellsHTML('fh')}</div>
+        </div>
+        <div>
+          <p class="cvt-wingtitle">BH · backhand</p>
+          <div class="cvt-shotgrid">${cellsHTML('bh')}</div>
+        </div>
       </div>
       <button class="cvt-save" id="cvt-end">Rally ended →</button>
     </div>
 
     <div class="cvt-sec" id="cvt-point">
-      <p class="cvt-q">Who won the point?</p>
-      <div class="cvt-grid2" id="cvt-winners"></div>
-      <p class="cvt-q">How did they win it?</p>
-      <div class="cvt-grid2" id="cvt-causes"></div>
-      <div class="cvt-auto" id="cvt-autoline"><span style="background:#d9f64b;border-radius:8px;font-size:10px;color:#1c330f;padding:1px 6px">auto</span><span id="cvt-autotext"></span></div>
-      <button class="cvt-save" id="cvt-savept">Save point</button>
-      <button class="cvt-x" id="cvt-skippt" style="display:block;margin:8px auto 0">skip</button>
+      <p class="cvt-q">Who ended the point?</p>
+      <div class="cvt-endgrid" id="cvt-endgrid"></div>
+      <button class="cvt-x" id="cvt-skippt" style="display:block;margin:12px auto 0">✕ skip this point</button>
     </div>
 
     <div class="cvt-sec" id="cvt-shot">
-      <p class="cvt-q">Shot detail <span style="font-weight:400;font-size:12px;color:#8fbf9a">(optional)</span></p>
-      <div style="display:flex;gap:14px">
-        <div>
-          <p class="cvt-label" style="margin-bottom:6px">Hit from</p>
-          <div class="cvt-zone" id="cvt-zones"></div>
-        </div>
-        <div style="flex:1;min-width:0">
-          <p class="cvt-label" style="margin-bottom:6px">Forehand</p>
-          <div class="cvt-chips" id="cvt-fhchips"></div>
-          <p class="cvt-label" style="margin-bottom:6px">Backhand</p>
-          <div class="cvt-chips" id="cvt-bhchips"></div>
+      <p class="cvt-label" id="cvt-shothead" style="margin-bottom:10px"></p>
+      <div class="cvt-chipauto">
+        <span style="background:#d9f64b;border-radius:8px;font-size:10px;color:#1c330f;padding:1px 6px">auto</span>
+        <b id="cvt-shotchip">—</b>
+        <button class="cvt-x" id="cvt-changeshot" style="margin-left:auto;text-decoration:underline">change</button>
+      </div>
+      <div class="cvt-changegrids" id="cvt-changegrids">
+        <div class="cvt-wings">
+          <div><p class="cvt-wingtitle" style="font-size:10px;color:#d9f64b">FH</p><div class="cvt-shotgrid" id="cvt-detail-fh">${detailCellsHTML('fh')}</div></div>
+          <div><p class="cvt-wingtitle" style="font-size:10px">BH</p><div class="cvt-shotgrid" id="cvt-detail-bh">${detailCellsHTML('bh')}</div></div>
         </div>
       </div>
-      <button class="cvt-save" id="cvt-saveshot">Save shot detail</button>
+      <p class="cvt-q">Hit from where?</p>
+      <div class="cvt-zone" id="cvt-zones"></div>
+      <button class="cvt-save" id="cvt-saveshot">Save ✓</button>
       <button class="cvt-x" id="cvt-skipshot" style="display:block;margin:8px auto 0">skip</button>
     </div>
 
@@ -160,6 +191,7 @@
       </div>
       <div id="cvt-visuals"></div>
       <div id="cvt-bars"></div>
+      <div id="cvt-shotmix"></div>
       <div id="cvt-shotmap"></div>
       <div id="cvt-log"></div>
       <button class="cvt-save" id="cvt-next">Next point →</button>
@@ -167,7 +199,6 @@
         <div class="cvt-card"><b id="cvt-s1">–</b><span>1st serve %</span></div>
         <div class="cvt-card"><b id="cvt-fhc">–</b><span>FH consistency</span></div>
         <div class="cvt-card"><b id="cvt-bhc">–</b><span>BH consistency</span></div>
-        <div class="cvt-card"><b id="cvt-slc">–</b><span>SL consistency</span></div>
       </div>
     </div>
   `;
@@ -183,7 +214,7 @@
     });
   }
 
-  // ---- setup screen ------------------------------------------------------
+  // ---- setup ------------------------------------------------------------
   let selFirstServer = 'A';
   function buildSetup() {
     const box = $('cvt-firstserver'); box.innerHTML = '';
@@ -201,36 +232,60 @@
     M.saveMatch(match);
     updateLive(); renderStats(); showScreen('cvt-live');
   };
-  $('cvt-newmatch').onclick = () => { buildSetup(); showScreen('cvt-setup'); };
+  $('cvt-newmatch').onclick = () => { $('cvt-title').textContent = 'Match setup'; buildSetup(); showScreen('cvt-setup'); };
 
-  // ---- point card -----------------------------------------------------------
-  function buildPointCard() {
-    const w = $('cvt-winners'); w.innerHTML = '';
-    [['A', names().A], ['B', names().B]].forEach(([k, name]) => {
-      const b = el('button', 'cvt-btn', name);
-      b.onclick = () => { selWinner = k; [...w.children].forEach(c => c.classList.remove('sel')); b.classList.add('sel'); updateAuto(); };
-      w.appendChild(b);
-    });
-    const causes = [['consistency', '🔁 Consistency play'], ['aggressive', '🎯 Aggressive play'], ['serve', '⚡ Serve play'], ['opp_double_fault', '🎁 Opp. double fault']];
-    const c = $('cvt-causes'); c.innerHTML = '';
-    causes.forEach(([k, label]) => {
-      const b = el('button', 'cvt-btn', label);
-      b.onclick = () => { selCause = k; [...c.children].forEach(x => x.classList.remove('sel')); b.classList.add('sel'); updateAuto(); };
-      c.appendChild(b);
+  // ---- the 2x3 one-tap point card --------------------------------------------
+  const END_COLS = [
+    ['winner', '🎯', 'Winner'],
+    ['forced', '💪', 'Forced err'],
+    ['unforced', '❌', 'Unforced'],
+  ];
+  function buildEndGrid() {
+    const g = $('cvt-endgrid'); g.innerHTML = '';
+   [['A', names().A, 'your player'], ['B', names().B, 'opponent']].forEach(([who, name, role]) => {
+      g.appendChild(el('div', 'cvt-endname',
+        `<span style="text-align:center;color:#f0f7ec">${name}<br><small style="font-size:9px;color:#8fbf9a;font-weight:400">${role}</small></span>`));
+      END_COLS.forEach(([how, icon, label]) => {
+        const pt = (how === 'winner')
+          ? '<small style="display:block;font-size:9px;color:#d9f64b;margin-top:2px">get pt</small>'
+          : '<small style="display:block;font-size:9px;color:#e8975a;margin-top:2px">lost pt</small>';
+        const b = el('button', 'cvt-endbtn', `<p>${icon}</p><span>${label}</span>${pt}`);
+        b.onclick = () => onPointEnd(who, how);
+        g.appendChild(b);
+      });
     });
   }
-  function updateAuto() {
-    const line = $('cvt-autoline');
-    if (selWinner && selCause) {
-      const loser = selWinner === 'A' ? names().B : names().A;
-      const lossLabels = { unforced_error: 'Unforced error', unreturnable: 'Unreturnable', double_fault: 'Double fault' };
-      $('cvt-autotext').textContent = loser + ' lost by: ' + lossLabels[M.LOSS_CAUSE_MAP[selCause]];
-      line.classList.add('show');
-    } else line.classList.remove('show');
+  function onPointEnd(who, how) {
+    const d = M.derivePointEnd(match, who, how);
+    // shot detail only when the tracked player's (A) shot is the story:
+    // A ended the rally, or A forced B's error
+    const detailNeeded = (who === 'A') || (who === 'B' && how === 'forced');
+    if (detailNeeded) {
+      pending = d;
+      const last = M.lastStroke(match);
+      selWing = last ? last.wing : null;
+      selShot = last ? last.shot : null;
+      selZone = null;
+      openShotCard(d);
+      showScreen('cvt-shot');
+    } else {
+      M.savePoint(match, { winner: d.winner, winCause: d.winCause, endDetail: d.endDetail });
+      showLive();
+    }
+  }
+  function endSummary(d) {
+    const causeL = { consistency: 'consistency', aggressive: d.endDetail === 'forced_error' ? 'aggressive (forced the error)' : 'aggressive play', serve: 'serve play' };
+    return names()[d.winner] + ' wins · ' + (causeL[d.winCause] || d.winCause);
   }
 
-  // ---- shot detail ------------------------------------------------------------
-  function buildShotCard() {
+  // ---- shot detail (auto chip + change + zone) ---------------------------------
+  function openShotCard(d) {
+    $('cvt-shothead').textContent = endSummary(d) + ' · shot detail';
+    updateShotChip();
+    $('cvt-changegrids').classList.remove('show');
+    panel.querySelectorAll('.cvt-dcell').forEach(x => {
+      x.classList.toggle('sel', x.dataset.wing === selWing && x.dataset.shot === selShot);
+    });
     const zoneLabels = { net_play: 'Net play', middle_court: 'Middle court', ahead_baseline: 'Ahead of baseline', behind_baseline: 'Behind baseline' };
     const z = $('cvt-zones'); z.innerHTML = '';
     M.ZONES.forEach(k => {
@@ -238,20 +293,32 @@
       b.onclick = () => { selZone = k; [...z.children].forEach(x => x.classList.remove('sel')); b.classList.add('sel'); };
       z.appendChild(b);
     });
-    const shotLabels = { volley: 'Volley', down_the_line: 'Down the line', cross_court: 'Cross court', smash: 'Smash', slice: 'Slice', lob: 'Lob', angle: 'Angle', drop_shot: 'Drop shot' };
-    [['fh', 'cvt-fhchips'], ['bh', 'cvt-bhchips']].forEach(([wing, id]) => {
-      const box = $(id); box.innerHTML = '';
-      M.SHOT_TYPES.forEach(sh => {
-        const b = el('button', 'cvt-btn', shotLabels[sh]);
-        b.onclick = () => {
-          selWing = wing; selShot = sh;
-          panel.querySelectorAll('.cvt-chips .cvt-btn').forEach(x => x.classList.remove('sel'));
-          b.classList.add('sel');
-        };
-        box.appendChild(b);
-      });
-    });
+    if (!selWing || !selShot) $('cvt-changegrids').classList.add('show');
   }
+  function updateShotChip() {
+    $('cvt-shotchip').textContent = (selWing && selShot)
+      ? selWing.toUpperCase() + ' · ' + (M.SHOT_LABELS[selShot] || selShot)
+      : 'No shot tapped — pick one';
+  }
+  $('cvt-changeshot').onclick = () => $('cvt-changegrids').classList.toggle('show');
+  panel.querySelectorAll('.cvt-dcell').forEach(b => {
+    b.onclick = (e) => {
+      const c = e.currentTarget;
+      selWing = c.dataset.wing; selShot = c.dataset.shot;
+      panel.querySelectorAll('.cvt-dcell').forEach(x => x.classList.remove('sel'));
+      c.classList.add('sel');
+      updateShotChip();
+    };
+  });
+  function finishPending(detail) {
+    if (!pending) return;
+    M.savePoint(match, { winner: pending.winner, winCause: pending.winCause, endDetail: pending.endDetail, shotDetail: detail });
+    pending = null;
+    showLive();
+  }
+  $('cvt-saveshot').onclick = () => finishPending(
+    (selZone || (selWing && selShot)) ? { zone: selZone, wing: selWing, shotType: selShot } : null);
+  $('cvt-skipshot').onclick = () => finishPending(null);
 
   // ---- stats -----------------------------------------------------------------
   const BAR_DEFS = [
@@ -266,7 +333,9 @@
     $('cvt-wp').textContent = s.win_points;
     $('cvt-lp').textContent = s.lost_points;
     $('cvt-bp').textContent = (s.balance_point >= 0 ? '+' : '') + s.balance_point;
+
     if (window.CourtVisionCharts) CourtVisionCharts.renderInto($('cvt-visuals'), match);
+
     const box = $('cvt-bars'); box.innerHTML = '';
     BAR_DEFS.forEach(([title, rows, key, lossCls]) => {
       box.appendChild(el('p', 'cvt-q', title));
@@ -276,11 +345,22 @@
         const bar = el('div', 'cvt-bar'); const fill = el('div', 'cvt-fill ' + lossCls);
         fill.style.width = d.pct + '%'; bar.appendChild(fill); box.appendChild(bar);
       });
+      if (key === 'how_you_won' && (s.aggressive_split.clean_winners || s.aggressive_split.forced_errors)) {
+        box.appendChild(el('div', 'cvt-stat',
+          `<span style="color:#8fbf9a">↳ aggressive split</span><span style="color:#8fbf9a">${s.aggressive_split.clean_winners} winners · ${s.aggressive_split.forced_errors} forced errors</span>`));
+      }
     });
 
-    // Shot selection & court position
+    const sx = $('cvt-shotmix'); sx.innerHTML = '';
+    if (s.shot_mix.length) {
+      sx.appendChild(el('p', 'cvt-q', 'Shot mix'));
+      s.shot_mix.forEach(r => {
+        sx.appendChild(el('div', 'cvt-stat',
+          `<span>${r.wing.toUpperCase()} ${M.SHOT_LABELS[r.shot] || r.shot}</span><span>${r.n} hit · <span style="color:${r.errors ? '#e8975a' : '#d9f64b'}">${r.errors} err</span> · ${r.in_play_pct}% in</span>`));
+      });
+    }
+
     const zl = { net_play: 'Net play', middle_court: 'Middle court', ahead_baseline: 'Ahead of baseline', behind_baseline: 'Behind baseline' };
-    const sl = { volley: 'volley', down_the_line: 'down the line', cross_court: 'cross court', smash: 'smash', slice: 'slice', lob: 'lob', angle: 'angle', drop_shot: 'drop shot' };
     const sm = $('cvt-shotmap'); sm.innerHTML = '';
     if (s.shot_map.length) {
       sm.appendChild(el('p', 'cvt-q', 'Shot selection & court position'));
@@ -295,7 +375,7 @@
       const byShot = {};
       s.shot_map.forEach(x => {
         if (!x.wing || !x.shot_type) return;
-        const k = x.wing.toUpperCase() + ' ' + sl[x.shot_type];
+        const k = x.wing.toUpperCase() + ' ' + (M.SHOT_LABELS[x.shot_type] || x.shot_type);
         byShot[k] = byShot[k] || { w: 0, e: 0 };
         x.outcome === 'aggressive_win' ? byShot[k].w++ : byShot[k].e++;
       });
@@ -305,32 +385,31 @@
       });
     }
 
-    // Point log
     const lg = $('cvt-log'); lg.innerHTML = '';
     if (match.points.length) {
       lg.appendChild(el('p', 'cvt-q', 'Point log'));
       const causeL = { consistency: 'consistency', aggressive: 'aggressive', serve: 'serve', opp_double_fault: 'opp. DF' };
+      const endL = { winner: '🎯', forced_error: '💪', unforced_error: '❌', double_fault: '🎁' };
       match.points.slice().reverse().forEach(p => {
         const who = match.players[p.winner];
-        const shot = p.shot_type ? ` · ${(p.wing || '').toUpperCase()} ${p.shot_type.replace(/_/g, ' ')}` : '';
+        const shot = p.shot_type ? ` · ${(p.wing || '').toUpperCase()} ${(M.SHOT_LABELS[p.shot_type] || p.shot_type)}` : '';
         const srv = p.serve ? ` · ${p.serve.replace(/_/g, ' ')}` : '';
+        const ed = p.end_detail ? ' ' + (endL[p.end_detail] || '') : '';
         lg.appendChild(el('div', 'cvt-stat',
-          `<span>#${p.n} ${who}</span><span>${causeL[p.win_cause]}${srv}${shot}</span>`));
+          `<span>#${p.n} ${who}${ed}</span><span>${causeL[p.win_cause]}${srv}${shot}</span>`));
       });
     }
 
     $('cvt-s1').textContent = s.serve.service_points ? s.serve.first_serve_pct + '%' : '–';
     $('cvt-fhc').textContent = s.consistency.fh.strokes ? s.consistency.fh.pct + '%' : '–';
     $('cvt-bhc').textContent = s.consistency.bh.strokes ? s.consistency.bh.pct + '%' : '–';
-    $('cvt-slc').textContent = s.consistency.sl.strokes ? s.consistency.sl.pct + '%' : '–';
 
-    // mirror into Analytics tab
     const mount = document.getElementById('cv-breakdown');
     if (mount) {
       const c = $('cvt-stats').cloneNode(true);
       c.querySelectorAll('[id]').forEach(n => n.removeAttribute('id'));
       c.classList.add('show');
-      const nb = c.querySelector('.cvt-save'); if (nb) nb.remove(); // no Next button in the tab
+      const nb = c.querySelector('.cvt-save'); if (nb) nb.remove();
       mount.replaceChildren(c);
     }
   }
@@ -338,14 +417,21 @@
   // ---- live screen / scoreboard --------------------------------------------------
   function updateLive() {
     if (!match) return;
-    const s = match.current.strokes;
-    const fh = s.filter(x => x === 'fh').length;
-    const bh = s.filter(x => x === 'bh').length;
-    const sl = s.filter(x => x === 'sl').length;
-    $('cvt-tally').textContent = `FH ${fh} · BH ${bh} · SL ${s.length - fh - bh}`;
-    $('cvt-fh-n').textContent = fh;
-    $('cvt-bh-n').textContent = bh;
-    $('cvt-sl-n').textContent = sl;
+    const counts = {};
+    let fh = 0, bh = 0;
+    match.current.strokes.forEach(x => {
+      const wing = x && x.wing ? x.wing : (x === 'fh' || x === 'bh' ? x : null);
+      const shot = x && x.shot ? x.shot : null;
+      if (wing === 'fh') fh++;
+      if (wing === 'bh') bh++;
+      if (wing && shot) { const k = wing + '-' + shot; counts[k] = (counts[k] || 0) + 1; }
+    });
+    M.WINGS.forEach(w => M.SHOT_TYPES.forEach(sh => {
+      const n = panel.querySelector('#cvt-n-' + w + '-' + sh);
+      if (n) n.textContent = counts[w + '-' + sh] || 0;
+    }));
+    $('cvt-tally').textContent = `Rally: FH ${fh} · BH ${bh}`;
+
     const sc = M.getScore(match);
     $('cvt-server').textContent = names()[sc.server] + ' serving:';
     panel.querySelectorAll('.cvt-serve').forEach(b => {
@@ -364,9 +450,9 @@
   }
 
   function resetSelections() {
-    selWinner = selCause = selZone = selWing = selShot = null;
+    selZone = selWing = selShot = null;
+    pending = null;
     panel.querySelectorAll('.sel').forEach(x => x.classList.remove('sel'));
-    $('cvt-autoline').classList.remove('show');
   }
   function showLive() {
     resetSelections(); secondServe = false; updateLive(); renderStats();
@@ -400,35 +486,22 @@
     const r = M.recordServe(match, 'fault');
     if (r.doubleFault) showLive(); else { secondServe = true; updateLive(); }
   };
-  $('cvt-fh').onclick = (e) => { flash(e.currentTarget); M.recordStroke(match, 'fh'); updateLive(); };
-  $('cvt-bh').onclick = (e) => { flash(e.currentTarget); M.recordStroke(match, 'bh'); updateLive(); };
-  $('cvt-sl').onclick = (e) => { flash(e.currentTarget); M.recordStroke(match, 'sl'); updateLive(); };
+
+  panel.querySelectorAll('#cvt-live .cvt-cell').forEach(b => {
+    b.onclick = (e) => {
+      const cell = e.currentTarget;
+      flash(cell);
+      M.recordStroke(match, cell.dataset.wing, cell.dataset.shot);
+      updateLive();
+    };
+  });
   $('cvt-undo').onclick = (e) => {
-    if (match.current.strokes.length === 0) return; // nothing to undo
+    if (match.current.strokes.length === 0) return;
     flash(e.currentTarget);
     M.undoStroke(match);
     updateLive();
   };
 
-  $('cvt-end').onclick = () => { buildPointCard(); showScreen('cvt-point'); };
+  $('cvt-end').onclick = () => { buildEndGrid(); showScreen('cvt-point'); };
   $('cvt-skippt').onclick = () => { match.current = { serve: null, serveFaults: 0, strokes: [] }; showLive(); };
-
-  $('cvt-savept').onclick = () => {
-    if (!selWinner || !selCause) { alert('Pick a winner and a cause first'); return; }
-    const needDetail = selCause === 'aggressive' || selCause === 'consistency';
-    if (needDetail) {
-      selWing = M.suggestWing(match);
-      buildShotCard();
-      showScreen('cvt-shot');
-    } else {
-      M.savePoint(match, { winner: selWinner, winCause: selCause });
-      showLive();
-    }
-  };
-  function finishWithDetail(detail) {
-    M.savePoint(match, { winner: selWinner, winCause: selCause, shotDetail: detail });
-    showLive();
-  }
-  $('cvt-saveshot').onclick = () => finishWithDetail((selZone || selShot) ? { zone: selZone, wing: selWing, shotType: selShot } : null);
-  $('cvt-skipshot').onclick = () => finishWithDetail(null);
 })();
