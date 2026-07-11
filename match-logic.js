@@ -26,9 +26,9 @@ const ZONES = ['net_play', 'middle_court', 'ahead_baseline', 'behind_baseline'];
 const WINGS = ['fh', 'bh'];
 const SHOT_TYPES = ['drive', 'cross', 'angle', 'dtl', 'volley', 'slice', 'smash', 'drop', 'lob'];
 const SHOT_LABELS = {
-  drive: 'Drive', cross: 'Cross', angle: 'Angle', dtl: 'DTL', volley: 'Volley',
+  drive: 'Drive', cross: 'Cross', angle: 'Angle', dtl: 'D.line', volley: 'Volley',
   slice: 'Slice', smash: 'Smash', drop: 'Drop', lob: 'Lob',
-  cross_court: 'Cross', down_the_line: 'DTL', drop_shot: 'Drop', // legacy
+  cross_court: 'Cross', down_the_line: 'D.line', drop_shot: 'Drop', // legacy
 };
 
 function newMatch({ playerA, playerB, server = 'A', matchId = null }) {

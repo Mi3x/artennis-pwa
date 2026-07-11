@@ -72,9 +72,10 @@
   .cvt-wings{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .cvt-wingtitle{font-size:12px;font-weight:700;text-align:center;margin:0 0 6px}
   .cvt-shotgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px}
-  .cvt-cell{position:relative;background:#1d4028;border:1px solid #2c5638;color:#cfe6d4;
-    border-radius:10px;padding:12px 2px;font-size:11px;text-align:center;cursor:pointer;font-family:inherit}
-  .cvt-cell.sel{background:#d9f64b;color:#1c330f;border-color:#d9f64b;font-weight:600}
+  .cvt-cell{position:relative;background:#1d4028;border:1px solid #2c5638;color:#f0f7ec;
+    border-radius:10px;padding:12px 2px;font-size:12px;text-align:center;cursor:pointer;font-family:inherit}
+  .cvt-cell[data-wing="fh"]{color:#d9f64b}  
+  .cvt-cell.sel{background:#d9f64b;color:#1c330f;border-width:2px;border-color:#f0f7ec;font-weight:600}
   .cvt-cell .n{position:absolute;top:2px;right:5px;font-size:9px;color:#8fbf9a}
   .cvt-cell.sel .n{color:#1c330f;font-weight:700}
   .cvt-endgrid{display:grid;grid-template-columns:76px 1fr 1fr 1fr;gap:6px;align-items:stretch}
