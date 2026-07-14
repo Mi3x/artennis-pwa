@@ -91,16 +91,14 @@ function suggestWing(match) { const l = lastStroke(match); return l ? l.wing : n
  */
 function derivePointEnd(match, who, how) {
   const other = who === 'A' ? 'B' : 'A';
-  const zeroTaps = match.current.strokes.length === 0;
+  // v4.1: serve-play points come exclusively from the Ace button.
+  // Rally ended is groundstroke territory — a zero-tap Winner here
+  // honestly means a return winner (aggressive), not a serve.
   if (how === 'winner') {
-    // serve winner if they served and no rally strokes were tapped
-    const cause = (match.server === who && zeroTaps) ? 'serve' : 'aggressive';
-    return { winner: who, winCause: cause, endDetail: 'winner' };
+    return { winner: who, winCause: 'aggressive', endDetail: 'winner' };
   }
   if (how === 'forced') {
-    // opponent forced the error -> opponent's aggressive win
-    const cause = (match.server === other && zeroTaps) ? 'serve' : 'aggressive';
-    return { winner: other, winCause: cause, endDetail: 'forced_error' };
+    return { winner: other, winCause: 'aggressive', endDetail: 'forced_error' };
   }
   // unforced
   return { winner: other, winCause: 'consistency', endDetail: 'unforced_error' };

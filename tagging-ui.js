@@ -74,8 +74,8 @@
   .cvt-shotgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px}
   .cvt-cell{position:relative;background:#1d4028;border:1px solid #2c5638;color:#f0f7ec;
     border-radius:10px;padding:12px 2px;font-size:12px;text-align:center;cursor:pointer;font-family:inherit}
-  .cvt-cell[data-wing="fh"]{color:#d9f64b}  
-  .cvt-cell.sel{background:#d9f64b;color:#1c330f;border-width:2px;border-color:#f0f7ec;font-weight:600}
+  .cvt-cell[data-wing="fh"]{color:#d9f64b}
+  .cvt-cell.sel{background:#d9f64b;color:#1c330f;border-width:2px;border-color:#f0f7ec;padding:11px 1px;font-weight:600}
   .cvt-cell .n{position:absolute;top:2px;right:5px;font-size:9px;color:#8fbf9a}
   .cvt-cell.sel .n{color:#1c330f;font-weight:700}
   .cvt-endgrid{display:grid;grid-template-columns:76px 1fr 1fr 1fr;gap:6px;align-items:stretch}
@@ -140,6 +140,16 @@
         <button class="cvt-btn cvt-pill cvt-serve" data-pl="body">1st in-B</button>
         <button class="cvt-btn cvt-pill cvt-serve" data-pl="angle">1st in-A</button>
         <button class="cvt-btn cvt-pill" id="cvt-sfault">Fault</button>
+        <button class="cvt-btn cvt-pill cvt-acebtn" data-pl="t" style="background:#d9f64b;color:#1c330f;font-weight:600;border-color:#d9f64b">⚡Ace-T</button>
+        <button class="cvt-btn cvt-pill cvt-acebtn" data-pl="body" style="background:#d9f64b;color:#1c330f;font-weight:600;border-color:#d9f64b">⚡Ace-B</button>
+        <button class="cvt-btn cvt-pill cvt-acebtn" data-pl="angle" style="background:#d9f64b;color:#1c330f;font-weight:600;border-color:#d9f64b">⚡Ace-A</button>
+      </div>
+      <div class="cvt-row" id="cvt-aceplace" style="display:none">
+        <span style="font-size:12px;color:#d9f64b;font-weight:600" id="cvt-acewho">⚡ Ace — where did it land?</span>
+        <button class="cvt-btn cvt-pill cvt-acepl" data-pl="t">T</button>
+        <button class="cvt-btn cvt-pill cvt-acepl" data-pl="body">B</button>
+        <button class="cvt-btn cvt-pill cvt-acepl" data-pl="angle">A</button>
+        <button class="cvt-x" id="cvt-acecancel">✕ cancel</button>
       </div>
       <div class="cvt-row" style="justify-content:space-between">
         <span style="font-size:12px;color:#9fc9aa" id="cvt-tally">Rally: FH 0 · BH 0</span>
@@ -243,7 +253,7 @@
   ];
   function buildEndGrid() {
     const g = $('cvt-endgrid'); g.innerHTML = '';
-   [['A', names().A, 'your player'], ['B', names().B, 'opponent']].forEach(([who, name, role]) => {
+    [['A', names().A, 'your player'], ['B', names().B, 'opponent']].forEach(([who, name, role]) => {
       g.appendChild(el('div', 'cvt-endname',
         `<span style="text-align:center;color:#f0f7ec">${name}<br><small style="font-size:9px;color:#8fbf9a;font-weight:400">${role}</small></span>`));
       END_COLS.forEach(([how, icon, label]) => {
@@ -434,9 +444,13 @@
     $('cvt-tally').textContent = `Rally: FH ${fh} · BH ${bh}`;
 
     const sc = M.getScore(match);
-    $('cvt-server').textContent = names()[sc.server] + ' serving:';
+    $('cvt-server').innerHTML = names()[sc.server] + ' serving:' +
+      (secondServe ? ' <span style="background:#e8975a;color:#1c330f;border-radius:8px;padding:1px 8px;font-size:10px;font-weight:700">2nd SERVE</span>' : '');
     panel.querySelectorAll('.cvt-serve').forEach(b => {
       b.textContent = (secondServe ? '2nd in-' : '1st in-') + b.dataset.pl.charAt(0).toUpperCase();
+    });  
+    panel.querySelectorAll('.cvt-acebtn').forEach(b => {
+      b.textContent = '⚡Ace-' + b.dataset.pl.charAt(0).toUpperCase();
     });
     $('cvt-title').textContent = 'Live tagging · Point ' + (match.points.length + 1);
 
@@ -488,6 +502,16 @@
     if (r.doubleFault) showLive(); else { secondServe = true; updateLive(); }
   };
 
+  // ---- Ace fast road: one tap = serve-play point saved ----
+  panel.querySelectorAll('.cvt-acebtn').forEach(b => {
+    b.onclick = (e) => {
+      flash(e.currentTarget);
+      const srv = match.server;
+      M.recordServe(match, 'in', e.currentTarget.dataset.pl);
+      M.savePoint(match, { winner: srv, winCause: 'serve', endDetail: 'winner' });
+      showLive();
+    };
+  });
   panel.querySelectorAll('#cvt-live .cvt-cell').forEach(b => {
     b.onclick = (e) => {
       const cell = e.currentTarget;
