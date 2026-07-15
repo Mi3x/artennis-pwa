@@ -31,13 +31,16 @@ const SHOT_LABELS = {
   cross_court: 'Cross', down_the_line: 'D.line', drop_shot: 'Drop', // legacy
 };
 
-function newMatch({ playerA, playerB, server = 'A', matchId = null }) {
+function newMatch({ playerA, playerB, server = 'A', matchId = null,
+                   source = 'live', videoName = null }) {
   return {
     id: matchId || 'match_' + Date.now(),
     createdAt: new Date().toISOString(),
     players: { A: playerA, B: playerB },
     firstServer: server,
     server,
+    source,          // 'live' (courtside) | 'video' (studio)
+    videoName,       // clip filename when source === 'video'
     points: [],
     current: freshPoint(),
   };
@@ -105,7 +108,7 @@ function derivePointEnd(match, who, how) {
 }
 
 // ---- ending the point ----------------------------------------------
-function savePoint(match, { winner, winCause, endDetail = null, shotDetail = null }) {
+function savePoint(match, { winner, winCause, endDetail = null, shotDetail = null, videoTime = null }) {
   if (!WIN_CAUSES.includes(winCause)) throw new Error('bad winCause');
   const cur = match.current;
   const record = {
@@ -119,6 +122,7 @@ function savePoint(match, { winner, winCause, endDetail = null, shotDetail = nul
     serve_placement: cur.servePlacement ?? null,
     strokes: cur.strokes.slice(),
     shots_in_rally: cur.strokes.length || null,
+    video_time: (videoTime != null) ? Math.round(videoTime * 100) / 100 : null,
     zone: shotDetail?.zone ?? null,
     wing: shotDetail?.wing ?? null,
     shot_type: shotDetail?.shotType ?? null,
@@ -310,13 +314,19 @@ function loadMatch(matchId) {
     return raw ? JSON.parse(raw) : null;
   } catch (e) { console.error('load failed', e); return null; }
 }
+function deleteMatch(matchId) {
+  try { localStorage.removeItem(STORE_PREFIX + matchId); } catch (e) { console.error(e); }
+}
+
 function listMatches() {
   const out = [];
   for (let i = 0; i < localStorage.length; i++) {
     const k = localStorage.key(i);
     if (k && k.startsWith(STORE_PREFIX)) {
       const m = JSON.parse(localStorage.getItem(k));
-      out.push({ id: m.id, createdAt: m.createdAt, players: m.players, points: m.points.length });
+      out.push({ id: m.id, createdAt: m.createdAt, players: m.players,
+                 points: m.points.length, source: m.source || 'live',
+                 videoName: m.videoName || null });
     }
   }
   return out.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -325,7 +335,7 @@ function listMatches() {
 const CourtVisionMatch = {
   newMatch, recordServe, recordStroke, undoStroke, suggestWing, lastStroke,
   derivePointEnd, savePoint, undoLastPoint, toggleServer, getStats, getScore,
-  saveMatch, loadMatch, listMatches,
+  saveMatch, loadMatch, listMatches, deleteMatch,
   WIN_CAUSES, LOSS_CAUSE_MAP, ZONES, WINGS, SHOT_TYPES, SHOT_LABELS,
 };
 if (typeof window !== 'undefined') window.CourtVisionMatch = CourtVisionMatch;

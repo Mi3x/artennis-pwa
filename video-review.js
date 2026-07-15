@@ -48,6 +48,12 @@
     .cvr-actions .cvr-btn{flex:1;text-align:center}
     .cvr-drop{border:2px dashed #7fb88a;border-radius:14px;padding:44px 20px;text-align:center;background:#1d4a2a}
     .cvr-hint{font-size:12px;color:#8fbf9a;margin-top:8px;text-align:center}
+    .cvr-modes{display:inline-flex;background:#0f2415;border:1px solid #2c5638;border-radius:999px;padding:3px}
+    .cvr-mode{border:none;background:transparent;color:#cfe6d4;border-radius:999px;padding:6px 14px;
+      font-size:12px;cursor:pointer;font-family:inherit}
+    .cvr-mode.sel{background:#d9f64b;color:#1c330f;font-weight:600}
+    .cvr-tagpane{display:none;border-top:1px solid #2c5638;padding-top:12px;margin-top:12px}
+    .cvr-tagpane.show{display:block}
     `;
     const st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
 
@@ -55,7 +61,11 @@
       <div class="cvr-wrap">
         <div class="cvr-head">
           <span class="cvr-label" id="cvr-name">No clip loaded</span>
-          <span>
+          <span style="display:flex;align-items:center;gap:8px">
+            <span class="cvr-modes" id="cvr-modes">
+              <button class="cvr-mode sel" data-mode="annotate">✏️ Annotate</button>
+              <button class="cvr-mode" data-mode="tag">🎯 Tag</button>
+            </span>
             <button class="cvr-btn cvr-pill" id="cvr-undo">↩ undo</button>
             <button class="cvr-btn cvr-pill" id="cvr-clear">✕ clear</button>
           </span>
@@ -87,13 +97,16 @@
               </div>
             </div>
           </div>
-          <textarea class="cvr-cap" id="cvr-caption" rows="2" placeholder="Coach's note — e.g. contact point too far back, elbow 42° (aim 30°)"></textarea>
-          <div class="cvr-actions">
-            <button class="cvr-btn" id="cvr-newvid">📹 New clip</button>
-            <button class="cvr-btn" id="cvr-save">⬇️ Save image</button>
-            <button class="cvr-btn lime" id="cvr-share">📤 Share</button>
+          <div id="cvr-annotate-only">
+            <textarea class="cvr-cap" id="cvr-caption" rows="2" placeholder="Coach's note — e.g. contact point too far back, elbow 42° (aim 30°)"></textarea>
+            <div class="cvr-actions">
+              <button class="cvr-btn" id="cvr-newvid">📹 New clip</button>
+              <button class="cvr-btn" id="cvr-save">⬇️ Save image</button>
+              <button class="cvr-btn lime" id="cvr-share">📤 Share</button>
+            </div>
+            <p class="cvr-hint">Pause on the moment, draw, add a note, then share to LINE or WhatsApp.</p>
           </div>
-          <p class="cvr-hint">Pause on the moment, draw, add a note, then share to LINE or WhatsApp.</p>
+          <div class="cvr-tagpane" id="cvr-tagpane"></div>
         </div>
       </div>`;
 
@@ -327,6 +340,30 @@
       a.download = 'courtvision-' + Date.now() + '.png';
       a.click();
     };
+
+    // ---- studio mode: video + tagging together -----------------------
+    let tagger = null, mode = 'annotate';
+    function setMode(m) {
+      mode = m;
+      document.querySelectorAll('.cvr-mode').forEach(b => b.classList.toggle('sel', b.dataset.mode === m));
+      const tagging = (m === 'tag');
+      $('cvr-annotate-only').style.display = tagging ? 'none' : 'block';
+      $('cvr-tagpane').classList.toggle('show', tagging);
+      $('cvr-rail').style.display = tagging ? 'none' : 'flex';
+      canvas.style.pointerEvents = tagging ? 'none' : 'auto';
+      if (tagging && !tagger && window.CourtVisionTagger) {
+        tagger = window.CourtVisionTagger.create({
+          mount: $('cvr-tagpane'),
+          source: 'video',
+          compact: true,
+          getVideoTime: () => (video.src ? video.currentTime : null),
+          videoName: () => $('cvr-name').textContent,
+        });
+      } else if (tagging && tagger) {
+        tagger.refresh();
+      }
+    }
+    document.querySelectorAll('.cvr-mode').forEach(b => b.onclick = () => setMode(b.dataset.mode));
 
     $('cvr-share').onclick = async () => {
       const blob = await toBlob(buildImage());
