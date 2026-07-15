@@ -89,6 +89,18 @@
   .cvt-chipauto b{font-size:15px;color:#d9f64b}
   .cvt-changegrids{display:none;margin-bottom:12px}
   .cvt-changegrids.show{display:block}
+  .cvt-acebtn{background:#d9f64b;color:#1c330f;font-weight:600;border-color:#d9f64b}
+  .cvt-acebtn.sel{border-color:#f0f7ec;border-width:2px}
+  .cvt-sb{display:flex;align-items:center;gap:16px;flex-wrap:wrap;width:100%}
+  .cvt-sbnames{font-size:12px;color:#cfe6d4}
+  .cvt-sbsmall{font-size:11px;color:#8fbf9a;letter-spacing:.5px}
+  .cvt-sbsmall b{color:#f0f7ec;font-size:13px;font-weight:600}
+  .cvt-sbsmall i{color:#8fbf9a;font-size:13px;font-style:normal}
+  .cvt-sbmain{margin-left:auto;background:#0f2415;border:1.5px solid #d9f64b;border-radius:10px;
+    padding:6px 16px;font-size:22px;font-weight:700;color:#d9f64b;letter-spacing:1px}
+  .cvt-sbmain.hot{animation:cvtpulse 1.4s ease-in-out infinite}
+  .cvt-sbmain.tb{border-color:#e8975a;color:#e8975a}
+  @keyframes cvtpulse{0%,100%{box-shadow:0 0 0 0 rgba(217,246,75,.5)}50%{box-shadow:0 0 0 7px rgba(217,246,75,0)}}
   `;
   const st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
 
@@ -114,6 +126,7 @@
     <div class="cvt-head">
       <span class="cvt-label" id="cvt-title">Live tagging</span>
       <span>
+        <button class="cvt-x" id="cvt-undopoint" style="color:#e8975a">↩ undo point</button>
         <button class="cvt-x" id="cvt-newmatch">＋ new match</button>
         <button class="cvt-x" id="cvt-viewstats">📊 stats</button>
         <button class="cvt-x" id="cvt-close">✕ close</button>
@@ -140,16 +153,10 @@
         <button class="cvt-btn cvt-pill cvt-serve" data-pl="body">1st in-B</button>
         <button class="cvt-btn cvt-pill cvt-serve" data-pl="angle">1st in-A</button>
         <button class="cvt-btn cvt-pill" id="cvt-sfault">Fault</button>
-        <button class="cvt-btn cvt-pill cvt-acebtn" data-pl="t" style="background:#d9f64b;color:#1c330f;font-weight:600;border-color:#d9f64b">⚡Ace-T</button>
-        <button class="cvt-btn cvt-pill cvt-acebtn" data-pl="body" style="background:#d9f64b;color:#1c330f;font-weight:600;border-color:#d9f64b">⚡Ace-B</button>
-        <button class="cvt-btn cvt-pill cvt-acebtn" data-pl="angle" style="background:#d9f64b;color:#1c330f;font-weight:600;border-color:#d9f64b">⚡Ace-A</button>
-      </div>
-      <div class="cvt-row" id="cvt-aceplace" style="display:none">
-        <span style="font-size:12px;color:#d9f64b;font-weight:600" id="cvt-acewho">⚡ Ace — where did it land?</span>
-        <button class="cvt-btn cvt-pill cvt-acepl" data-pl="t">T</button>
-        <button class="cvt-btn cvt-pill cvt-acepl" data-pl="body">B</button>
-        <button class="cvt-btn cvt-pill cvt-acepl" data-pl="angle">A</button>
-        <button class="cvt-x" id="cvt-acecancel">✕ cancel</button>
+        <button class="cvt-btn cvt-pill cvt-acebtn" data-pl="t">⚡Ace-T</button>
+        <button class="cvt-btn cvt-pill cvt-acebtn" data-pl="body">⚡Ace-B</button>
+        <button class="cvt-btn cvt-pill cvt-acebtn" data-pl="angle">⚡Ace-A</button>
+        <button class="cvt-btn cvt-pill" id="cvt-undoserve" style="margin-left:auto">↩ undo serve</button>
       </div>
       <div class="cvt-row" style="justify-content:space-between">
         <span style="font-size:12px;color:#9fc9aa" id="cvt-tally">Rally: FH 0 · BH 0</span>
@@ -169,13 +176,19 @@
     </div>
 
     <div class="cvt-sec" id="cvt-point">
-      <p class="cvt-q">Who ended the point?</p>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <p class="cvt-q" style="margin:0">Who ended the point?</p>
+        <button class="cvt-x" id="cvt-backlive">← back</button>
+      </div>
       <div class="cvt-endgrid" id="cvt-endgrid"></div>
       <button class="cvt-x" id="cvt-skippt" style="display:block;margin:12px auto 0">✕ skip this point</button>
     </div>
 
     <div class="cvt-sec" id="cvt-shot">
-      <p class="cvt-label" id="cvt-shothead" style="margin-bottom:10px"></p>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <p class="cvt-label" id="cvt-shothead" style="margin:0"></p>
+        <button class="cvt-x" id="cvt-backpoint">← back</button>
+      </div>
       <div class="cvt-chipauto">
         <span style="background:#d9f64b;border-radius:8px;font-size:10px;color:#1c330f;padding:1px 6px">auto</span>
         <b id="cvt-shotchip">—</b>
@@ -448,19 +461,28 @@
       (secondServe ? ' <span style="background:#e8975a;color:#1c330f;border-radius:8px;padding:1px 8px;font-size:10px;font-weight:700">2nd SERVE</span>' : '');
     panel.querySelectorAll('.cvt-serve').forEach(b => {
       b.textContent = (secondServe ? '2nd in-' : '1st in-') + b.dataset.pl.charAt(0).toUpperCase();
-    });  
-    panel.querySelectorAll('.cvt-acebtn').forEach(b => {
-      b.textContent = '⚡Ace-' + b.dataset.pl.charAt(0).toUpperCase();
     });
     $('cvt-title').textContent = 'Live tagging · Point ' + (match.points.length + 1);
 
+    // ---- scoreboard: game score is the hero, sets/games are context ----
+    const srvMark = w => (sc.server === w && !sc.finished) ? '⚡' : '';
+    const pair = (a, b) => {
+      const A = a >= b ? `<b>${a}</b>` : `<i>${a}</i>`;
+      const B = b >= a ? `<b>${b}</b>` : `<i>${b}</i>`;
+      return A + '<i>-</i>' + B;
+    };
     const setsStr = sc.setHistory.map(x => x.A + '-' + x.B).join(' ');
-    $('cvt-scoreboard').innerHTML =
-      `<span>${names().A} vs ${names().B}</span>` +
-      `<span>Sets <b>${sc.sets.A}-${sc.sets.B}</b>${setsStr ? ' <small style="color:#8fbf9a">(' + setsStr + ')</small>' : ''}</span>` +
-      `<span>Games <b>${sc.games.A}-${sc.games.B}</b></span>` +
-      `<span><b>${sc.gameScore}</b></span>` +
-      (sc.finished ? `<span style="color:#d9f64b;font-weight:600">🏆 ${names()[sc.matchWinner]} wins!</span>` : '');
+    // Ad / Deuce / tiebreak = pressure moments -> pulse
+    const hot = /Ad|Deuce/.test(sc.gameScore) || sc.tiebreak;
+    const mainCls = 'cvt-sbmain' + (hot && !sc.finished ? ' hot' : '') + (sc.tiebreak ? ' tb' : '');
+    $('cvt-scoreboard').innerHTML = `<div class="cvt-sb">
+        <span class="cvt-sbnames">${srvMark('A')}${names().A} <i style="color:#8fbf9a;font-style:normal">vs</i> ${srvMark('B')}${names().B}</span>
+        <span class="cvt-sbsmall">SETS ${pair(sc.sets.A, sc.sets.B)}${setsStr ? ` <small style="color:#4a7a56">(${setsStr})</small>` : ''}</span>
+        <span class="cvt-sbsmall">GAMES ${pair(sc.games.A, sc.games.B)}</span>
+        ${sc.finished
+        ? `<span class="cvt-sbmain">🏆 ${names()[sc.matchWinner]}</span>`
+        : `<span class="${mainCls}">${sc.gameScore}</span>`}
+      </div>`;
     $('cvt-ends').classList.toggle('show', sc.changeEnds && !sc.finished);
   }
 
@@ -505,13 +527,44 @@
   // ---- Ace fast road: one tap = serve-play point saved ----
   panel.querySelectorAll('.cvt-acebtn').forEach(b => {
     b.onclick = (e) => {
-      flash(e.currentTarget);
+      const cell = e.currentTarget;
+      flash(cell);
       const srv = match.server;
-      M.recordServe(match, 'in', e.currentTarget.dataset.pl);
+      M.recordServe(match, 'in', cell.dataset.pl); // 1st_in or 2nd_in + placement
       M.savePoint(match, { winner: srv, winCause: 'serve', endDetail: 'winner' });
       showLive();
     };
   });
+
+  // ---- undo serve: clears this point's serve state (fault taken back) ----
+  $('cvt-undoserve').onclick = (e) => {
+    const cur = match.current;
+    if (!cur.serve && cur.serveFaults === 0) return; // nothing to undo
+    flash(e.currentTarget);
+    cur.serve = null;
+    cur.serveFaults = 0;
+    cur.servePlacement = null;
+    secondServe = false;
+    panel.querySelectorAll('.cvt-serve').forEach(x => x.classList.remove('sel'));
+    $('cvt-sfault').classList.remove('sel');
+    updateLive();
+  };
+
+  // ---- undo point: removes the last SAVED point; score rewinds itself ----
+  $('cvt-undopoint').onclick = () => {
+    if (!match || !match.points.length) { alert('No points to undo yet'); return; }
+    const last = match.points[match.points.length - 1];
+    const causeL = { consistency: 'consistency', aggressive: 'aggressive', serve: 'serve play', opp_double_fault: 'double fault' };
+    const ok = confirm('Undo point #' + last.n + ' — ' + names()[last.winner] + ' · ' + (causeL[last.win_cause] || last.win_cause) + '?');
+    if (!ok) return;
+    M.undoLastPoint(match);
+    showLive();
+  };
+
+  // ---- back buttons (nothing saved yet at these steps) ----
+  $('cvt-backlive').onclick = () => { updateLive(); showScreen('cvt-live'); };
+  $('cvt-backpoint').onclick = () => { pending = null; buildEndGrid(); showScreen('cvt-point'); };
+
   panel.querySelectorAll('#cvt-live .cvt-cell').forEach(b => {
     b.onclick = (e) => {
       const cell = e.currentTarget;

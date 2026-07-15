@@ -131,6 +131,19 @@ function savePoint(match, { winner, winCause, endDetail = null, shotDetail = nul
 }
 function toggleServer(match) { match.server = match.server === 'A' ? 'B' : 'A'; }
 
+/**
+ * v4.2 — remove the last saved point. Because getScore() replays the whole
+ * log, the game/set score, server and change-ends all rewind automatically.
+ * Returns the removed point record, or null if the log was empty.
+ */
+function undoLastPoint(match) {
+  if (!match.points.length) return null;
+  const removed = match.points.pop();
+  match.current = freshPoint();
+  match.server = getScore(match).server;
+  return removed;
+}
+
 // ---- scoring engine ---------------------------------------------------
 function getScore(match) {
   const PTS = ['0', '15', '30', '40'];
@@ -311,7 +324,7 @@ function listMatches() {
 
 const CourtVisionMatch = {
   newMatch, recordServe, recordStroke, undoStroke, suggestWing, lastStroke,
-  derivePointEnd, savePoint, toggleServer, getStats, getScore,
+  derivePointEnd, savePoint, undoLastPoint, toggleServer, getStats, getScore,
   saveMatch, loadMatch, listMatches,
   WIN_CAUSES, LOSS_CAUSE_MAP, ZONES, WINGS, SHOT_TYPES, SHOT_LABELS,
 };
